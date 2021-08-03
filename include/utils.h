@@ -42,4 +42,9 @@ void empty_str(unsigned char **str);
 */
 char execute_command(char *command, Array_Char *out, Array_Char *err);
 
+// Fait une liste des fichiers de la commande `dir` pour pouvoir les énumérer.
+unsigned long list_files(Array_Char ***dest, Array_Char *files);
+
+void free_list(Array_Char ***list, unsigned long size);
+
 #endif

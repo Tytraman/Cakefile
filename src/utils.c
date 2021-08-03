@@ -128,3 +128,38 @@ char execute_command(char *command, Array_Char *out, Array_Char *err) {
 
     return 0;
 }
+
+unsigned long list_files(Array_Char ***dest, Array_Char *files) {
+    unsigned long size = 0UL;
+    *dest = NULL;
+    unsigned long i, length = 0UL;
+    char *begin = files->array;
+    for(i = 0UL; i < files->length; i++) {
+        if(files->array[i] == '\r') {
+            *dest = realloc(*dest, (size + 1) * sizeof(Array_Char *));
+            (*dest)[size] = malloc(sizeof(Array_Char));
+            Array_Char ar;
+            ar.length = length;
+            ar.array = malloc(length + 1);
+            memcpy(ar.array, begin, length);
+            ar.array[length] = '\0';
+            (*(*dest)[size]) = ar;
+            size++;
+            i++;
+            begin = &files->array[i + 1];
+            length = 0UL;
+        }else
+            length++;
+    }
+    return size;
+}
+
+void free_list(Array_Char ***list, unsigned long size) {
+    unsigned long i;
+    for(i = 0UL; i < size; i++) {
+        free((*(list)[i])->array);
+        free((*list)[i]);
+    }
+    free(*list);
+    list = NULL;
+}

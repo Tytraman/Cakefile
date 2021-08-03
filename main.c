@@ -161,21 +161,35 @@ int main(int argc, char **argv) {
     }
 
     Array_Char dirCout, dirCerr;
+    Array_Char dirHout, dirHerr;
 
     char dirC[] = "cmd /C dir *.c /b/s";
-    if(execute_command(dirC, &dirCout, &dirCerr) != 0) {
-        error_create_process(dirC, GetLastError());
-        goto close_handles;
+    char result;
+    if((result = execute_command(dirC, &dirCout, &dirCerr)) != 0) {
+        if(result == 1)
+            error_create_process(dirC, GetLastError());
+        else {
+            free(dirCout.array);
+            free(dirCerr.array);
+            dirCout.array = NULL;
+            dirCerr.array = NULL;
+        }
+    }
+    dirC[13] = 'h';
+    if((result = execute_command(dirC, &dirHout, &dirHerr)) != 0) {
+        if(result == 1)
+            error_create_process(dirC, GetLastError());
+        else {
+            free(dirHout.array);
+            free(dirHerr.array);
+            dirHout.array = NULL;
+            dirHerr.array = NULL;
+        }
     }
 
-    if(dirCout.array)
-        wprintf(L"%S", dirCout.array);
-    if(dirCerr.array)
-        wprintf(L"%S", dirCerr.array);
+    Array_Char **listC = NULL;
+    unsigned long listCsize = list_files(&listC, &dirCout);
 
-free_array:
-    free(dirCout.array);
-    free(dirCerr.array);
 close_handles:
     CloseHandle(stdoutRead);
     CloseHandle(stdoutWrite);
