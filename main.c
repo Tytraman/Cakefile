@@ -25,14 +25,12 @@ int main(int argc, char **argv) {
         if(strcmp(argv[1], "--help") == 0) {
             wprintf(
                 L"==========%S==========\n"
+                L"Le compilateur utilisé est gcc, alors assure toi de l'avoir installé et d'avoir la variable d'environnement !\n"
                 L"Les options suivantes doivent être mises dans un fichier `Cakefile` (sans extension).\n"
                 L"Le format est clé : valeur\n\n"
                 L"Liste des options :\n"
                 L"[ Obligatoires ]\n"
-                L"- cc : indique le compilateur à utiliser, par exemple gcc.\n"
                 L"- exec_name : nom du fichier exécutable final.\n"
-                L"- src_dir : dossier où se situent les fichiers sources.\n"
-                L"- inc_dir : dossier où se situent les headers.\n"
                 L"- obj_dir : dossier dans lequel les fichiers compilés logeront.\n"
                 L"- bin_dir : dossier dans lequel le fichier exécutable prendra ses aises.\n\n"
                 L"[ Optionnelles ]\n"
@@ -45,7 +43,7 @@ int main(int argc, char **argv) {
             );
             return 0;
         }else if(strcmp(argv[1], "--version") == 0) {
-            wprintf(L"%S version %S\n", PROGRAM_NAME, VERSION);
+            wprintf(L"%Sx%S version %S\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
             return 0;
         }
     }
@@ -76,13 +74,6 @@ int main(int argc, char **argv) {
     // Récupération des paramètres :
     unsigned char *temp;
 
-    long ccSize;
-    unsigned char *cc = NULL;
-
-    long srcDirSize;
-    unsigned char *srcDir = NULL;
-    long incDirSize;
-    unsigned char *incDir = NULL;
     long objDirSize;
     unsigned char *objDir = NULL;
     long binDirSize;
@@ -100,27 +91,6 @@ int main(int argc, char **argv) {
     unsigned char *compileOptions = NULL;
     long linkOptionsSize;
     unsigned char *linkOptions = NULL;
-
-    if((temp = get_key_value("cc", fileBuffer, fileSize, &ccSize)))
-        copy_value(&cc, temp, ccSize);
-    else {
-        error_key_not_found("cc");
-        goto program_end;
-    }
-
-    if((temp = get_key_value("src_dir", fileBuffer, fileSize, &srcDirSize)))
-        copy_value(&srcDir, temp, srcDirSize);
-    else {
-        error_key_not_found("src_dir");
-        goto program_end;
-    }
-
-    if((temp = get_key_value("inc_dir", fileBuffer, fileSize, &incDirSize)))
-        copy_value(&incDir, temp, incDirSize);
-    else {
-        error_key_not_found("inc_dir");
-        goto program_end;
-    }
 
     if((temp = get_key_value("obj_dir", fileBuffer, fileSize, &objDirSize)))
         copy_value(&objDir, temp, objDirSize);
@@ -212,9 +182,6 @@ close_handles:
     CloseHandle(stderrRead);
     CloseHandle(stderrWrite);
 program_end:
-    free(cc);
-    free(srcDir);
-    free(incDir);
     free(objDir);
     free(binDir);
     free(execName);
