@@ -1,5 +1,6 @@
 #include "../include/utils.h"
 #include "../include/global.h"
+#include "../include/error.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,11 +99,15 @@ void empty_str(unsigned char **str) {
 }
 
 char execute_command(char *command, Array_Char *out, Array_Char *err) {
-    out->array  = NULL;
-    out->length = 0UL;
-    err->array  = NULL;
-    err->length = 0UL;
-
+    if(out) {
+        out->array  = NULL;
+        out->length = 0UL;
+    }
+    if(err) {
+        err->array  = NULL;
+        err->length = 0UL;
+    }
+    
     STARTUPINFOA si = { 0 };
     si.cb = sizeof(si);
     si.dwFlags = STARTF_USESTDHANDLES;
@@ -120,32 +125,51 @@ char execute_command(char *command, Array_Char *out, Array_Char *err) {
     DWORD stderrReadSize = GetFileSize(stderrRead, NULL);
 
     DWORD read, totalRead = 0UL;
+    DWORD written;
     char tempBuff[BUFF_SIZE];
 
     // Lecture et copie de stdout
     if(stdoutReadSize > 0UL) {
-        while(1) {
-            if(!ReadFile(stdoutRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-            totalRead += read;
-            add_allocate((void **) &out->array, tempBuff, read, 1, &out->length);
-            if(totalRead == stdoutReadSize) break;
+        if(out) {
+            while(1) {
+                if(!ReadFile(stdoutRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
+                totalRead += read;
+                add_allocate((void **) &out->array, tempBuff, read, 1, &out->length);
+                if(totalRead == stdoutReadSize) break;
+            }
+            out->array = realloc(out->array, out->length + 1);
+            out->array[out->length] = '\0';
+        }else {
+            while(1) {
+                if(!ReadFile(stdoutRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
+                totalRead += read;
+                WriteFile(stdoutParent, tempBuff, read, &written, NULL);
+                if(totalRead == stdoutReadSize) break;
+            }
         }
-        out->array = realloc(out->array, out->length + 1);
-        out->array[out->length] = '\0';
     }
-
+    
     totalRead = 0UL;
 
     // Lecture et copie de stderr
     if(stderrReadSize > 0UL) {
-        while(1) {
-            if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-            totalRead += read;
-            add_allocate((void **) &err->array, tempBuff, read, 1, &err->length);
-            if(totalRead == stderrReadSize) break;
+        if(err) {
+            while(1) {
+                if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
+                totalRead += read;
+                add_allocate((void **) &err->array, tempBuff, read, 1, &err->length);
+                if(totalRead == stderrReadSize) break;
+            }
+            err->array = realloc(err->array, err->length + 1);
+            err->array[err->length] = '\0';
+        }else {
+            while(1) {
+                if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
+                totalRead += read;
+                WriteFile(stderrParent, tempBuff, read, &written, NULL);
+                if(totalRead == stderrReadSize) break;
+            }
         }
-        err->array = realloc(err->array, err->length + 1);
-        err->array[err->length] = '\0';
     }
 
     return 0;
@@ -179,14 +203,14 @@ unsigned long list_files(Array_Char ***dest, Array_Char *files) {
 void free_list(Array_Char ***list, unsigned long size) {
     unsigned long i;
     for(i = 0UL; i < size; i++) {
-        free((*(list)[i])->array);
+        free((*list)[i]->array);
         free((*list)[i]);
     }
     free(*list);
     list = NULL;
 }
 
-unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles, unsigned char *srcDir, long srcDirSize, unsigned char *objDir, long objDirSize) {
+unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles) {
     Array_Char oFiles;
     oFiles.length = cFiles->length;
     oFiles.array = malloc(cFiles->length + 1);
@@ -202,20 +226,20 @@ unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles, unsigned char
     unsigned long ptrIndex;
     unsigned long length = programFilenameLength;
 
-    unsigned char *objSlash = malloc(objDirSize + 1);
-    memcpy(objSlash, objDir, objDirSize);
-    objSlash[objDirSize] = '\\';
+    unsigned char *objSlash = malloc(objDirLength + 1);
+    memcpy(objSlash, objDir, objDirLength);
+    objSlash[objDirLength] = '\\';
 
     for(i = 0UL; i < size; i++) {
-        if((ptr = search_data((*dest)[i]->array, srcDir, 0UL, (*dest)[i]->length, srcDirSize))) {
+        if((ptr = search_data((*dest)[i]->array, srcDir, 0UL, (*dest)[i]->length, srcDirLength))) {
             ptrIndex = ptr - (void *) (*dest)[i]->array;
-            rem_allocate((void **) &(*dest)[i]->array, ptr, srcDirSize, 1, &(*dest)[i]->length);
+            rem_allocate((void **) &(*dest)[i]->array, ptr, srcDirLength, 1, &(*dest)[i]->length);
             ptr = (*dest)[i]->array + ptrIndex;
-            move_allocate((void **) &(*dest)[i]->array, ptr, objDir, objDirSize, 1, &(*dest)[i]->length);
+            move_allocate((void **) &(*dest)[i]->array, ptr, objDir, objDirLength, 1, &(*dest)[i]->length);
             (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
             (*dest)[i]->array[(*dest)[i]->length] = '\0';
         }else {
-            move_allocate((void **) &(*dest)[i]->array, &(*dest)[i]->array[get_last_backslash(&programFilename[programFilenameLength - 1], programFilenameLength)], objSlash, objDirSize + 1, 1, &(*dest)[i]->length);
+            move_allocate((void **) &(*dest)[i]->array, &(*dest)[i]->array[get_last_backslash(&programFilename[programFilenameLength - 1], programFilenameLength)], objSlash, objDirLength + 1, 1, &(*dest)[i]->length);
             (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
             (*dest)[i]->array[(*dest)[i]->length] = '\0';
         }
@@ -270,12 +294,12 @@ int mkdirs(char *path) {
     return 0;
 }
 
-void clean(Array_Char **objFiles, unsigned long objFilesSize, char *objDir, char *exe) {
+void clean(Array_Char **objFiles, unsigned long objFilesSize) {
     unsigned long i;
     for(i = 0UL; i < objFilesSize; i++)
         remove(objFiles[i]->array);
     rmdir(objDir);
-    remove(exe);
+    remove(exec.array);
 }
 
 void *search_data(void *src, void *researching, unsigned long fromIndex, unsigned long srcSize, unsigned long researchSize) {
@@ -319,4 +343,18 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
         filenameEnd--;
         filenameLength--;
     }
+}
+
+char create_object(Array_Char *cFile, Array_Char *oFile) {
+    char *command = NULL;
+    unsigned long commandSize = 0UL;
+    commandSize = 19 + cFile->length + oFile->length + compileOptionsLength;
+    command = malloc(commandSize + 1);
+    sprintf(command, "cmd /C gcc -c %s -o %s %s", cFile->array, oFile->array, compileOptions);
+    wprintf(L"%S\n", &command[7]);
+    char result;
+    if((result = execute_command(command, NULL, NULL)) != 0)
+        if(result == 1) error_create_process(command, GetLastError());
+        else wprintf(L"Erreur lecture des données\n");
+    free(command);  
 }

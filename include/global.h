@@ -1,6 +1,8 @@
 #ifndef __CAKE_GLOBAL_H__
 #define __CAKE_GLOBAL_H__
 
+#include "utils.h"
+
 #include <windows.h>
 
 #define BUFF_SIZE 2048
@@ -29,5 +31,29 @@ extern HANDLE stderrRead, stderrWrite;
 extern HANDLE stdoutParent;
 // Pointeur vers stderr (WINAPI).
 extern HANDLE stderrParent;
+
+
+extern long srcDirLength;
+extern unsigned char *srcDir;
+
+extern long objDirLength;
+extern unsigned char *objDir;
+
+extern long binDirLength;
+extern unsigned char *binDir;
+
+extern long includesLength;
+extern unsigned char *includes;
+
+extern long libsLength;
+extern unsigned char *libs;
+
+extern long compileOptionsLength;
+extern unsigned char *compileOptions;
+
+extern long linkOptionsLength;
+extern unsigned char *linkOptions;
+
+extern Array_Char exec;
 
 #endif

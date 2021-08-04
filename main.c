@@ -91,26 +91,6 @@ int main(int argc, char **argv) {
     // Récupération des paramètres :
     unsigned char *temp;
 
-    long srcDirSize;
-    unsigned char *srcDir = NULL;
-    long objDirSize;
-    unsigned char *objDir = NULL;
-    long binDirSize;
-    unsigned char *binDir = NULL;
-
-    long execNameSize;
-    unsigned char *execName = NULL;
-
-    long includesSize;
-    unsigned char *includes = NULL;
-    long libsSize;
-    unsigned char *libs = NULL;
-
-    long compileOptionsSize;
-    unsigned char *compileOptions = NULL;
-    long linkOptionsSize;
-    unsigned char *linkOptions = NULL;
-
     char key1[] = "src_dir";
     char key2[] = "obj_dir";
     char key3[] = "bin_dir";
@@ -120,52 +100,54 @@ int main(int argc, char **argv) {
     char key7[] = "compile_options";
     char key8[] = "link_options";
 
-    if((temp = get_key_value(key1, fileBuffer, fileSize, &srcDirSize)))
-        copy_value(&srcDir, temp, srcDirSize);
+    if((temp = get_key_value(key1, fileBuffer, fileSize, &srcDirLength)))
+        copy_value(&srcDir, temp, srcDirLength);
     else {
         error_key_not_found(key1);
         goto program_end;
     }
 
     
-    if((temp = get_key_value(key2, fileBuffer, fileSize, &objDirSize)))
-        copy_value(&objDir, temp, objDirSize);
+    if((temp = get_key_value(key2, fileBuffer, fileSize, &objDirLength)))
+        copy_value(&objDir, temp, objDirLength);
     else {
         error_key_not_found(key2);
         goto program_end;
     }
 
-    if((temp = get_key_value(key3, fileBuffer, fileSize, &binDirSize)))
-        copy_value(&binDir, temp, binDirSize);
+    if((temp = get_key_value(key3, fileBuffer, fileSize, &binDirLength)))
+        copy_value(&binDir, temp, binDirLength);
     else {
         error_key_not_found(key3);
         goto program_end;
     }
 
-    if((temp = get_key_value(key4, fileBuffer, fileSize, &execNameSize)))
-        copy_value(&execName, temp, execNameSize);
+    long execNameLength;
+    unsigned char *execName = NULL;
+    if((temp = get_key_value(key4, fileBuffer, fileSize, &execNameLength)))
+        copy_value(&execName, temp, execNameLength);
     else {
         error_key_not_found(key4);
         goto program_end;
     }
 
-    if((temp = get_key_value(key5, fileBuffer, fileSize, &includesSize)))
-        copy_value(&includes, temp, includesSize);
+    if((temp = get_key_value(key5, fileBuffer, fileSize, &includesLength)))
+        copy_value(&includes, temp, includesLength);
     else
         empty_str(&includes);
 
-    if((temp = get_key_value(key6, fileBuffer, fileSize, &libsSize)))
-        copy_value(&libs, temp, libsSize);
+    if((temp = get_key_value(key6, fileBuffer, fileSize, &libsLength)))
+        copy_value(&libs, temp, libsLength);
     else
         empty_str(&libs);
 
-    if((temp = get_key_value(key7, fileBuffer, fileSize, &compileOptionsSize)))
-        copy_value(&compileOptions, temp, compileOptionsSize);
+    if((temp = get_key_value(key7, fileBuffer, fileSize, &compileOptionsLength)))
+        copy_value(&compileOptions, temp, compileOptionsLength);
     else
         empty_str(&compileOptions);
 
-    if((temp = get_key_value(key8, fileBuffer, fileSize, &linkOptionsSize)))
-        copy_value(&linkOptions, temp, linkOptionsSize);
+    if((temp = get_key_value(key8, fileBuffer, fileSize, &linkOptionsLength)))
+        copy_value(&linkOptions, temp, linkOptionsLength);
     else
         empty_str(&linkOptions);
 
@@ -217,13 +199,12 @@ int main(int argc, char **argv) {
     }
 
     /* Le nom de l'exe est nécessaire dans tous les modes */
-    Array_Char exe;
-    exe.length = binDirSize + execNameSize + 1;
-    exe.array = malloc(exe.length);
-    memcpy(exe.array, binDir, binDirSize);
-    exe.array[binDirSize] = '\\';
-    memcpy(&exe.array[binDirSize + 1], execName, execNameSize);
-    exe.array[exe.length] = '\0';
+    exec.length = binDirLength + execNameLength + 1;
+    exec.array = malloc(exec.length);
+    memcpy(exec.array, binDir, binDirLength);
+    exec.array[binDirLength] = '\\';
+    memcpy(&exec.array[binDirLength + 1], execName, execNameLength);
+    exec.array[exec.length] = '\0';
     free(execName);
     execName = NULL;
 
@@ -241,7 +222,7 @@ int main(int argc, char **argv) {
 
     if(mode == MODE_ALL || mode == MODE_RESET || mode == MODE_LINK)
         if(dirCout.array)
-            listOsize = list_o_files(&listO, &dirCout, srcDir, srcDirSize, objDir, objDirSize);
+            listOsize = list_o_files(&listO, &dirCout);
     
     // Listing des fichiers C et H
     if(mode == MODE_ALL || mode == MODE_RESET) {
@@ -282,15 +263,23 @@ int main(int argc, char **argv) {
     }else if(mode == MODE_LINK)
         if((result = mkdirs(binDir)) != 0)
             if(result == 2) error_create_folder(binDir);
-    
+
+
+    if(mode == MODE_ALL || mode == MODE_RESET) {
+        unsigned long i;
+        FILETIME lastModified;
+        for(i = 0UL; i < listOsize; i++) {
+            if(GetFileAttributesA(listO[i]->array) == 0xffffffff)
+                create_object(listC[i], listO[i]);
+        }
+    }
+
 pre_end1:
     // Libération de la mémoire des listes de fichiers
     if(listC)
         free_list(&listC, listCsize);
     if(listH)
         free_list(&listH, listHsize);
-
-
 close_handles:
     CloseHandle(stdoutRead);
     CloseHandle(stdoutWrite);
@@ -306,5 +295,7 @@ program_end:
     free(compileOptions);
     free(linkOptions);
     free(programFilename);
+    free(exec.array);
+    wprintf(L"[%S] Terminé %s\n", PROGRAM_NAME, (programStatus != 0 ? L"avec une erreur..." : L"avec succès !"));
     return (programStatus != 0 ? EXIT_FAILURE : EXIT_SUCCESS);
 }

@@ -71,7 +71,7 @@ unsigned long list_files(Array_Char ***dest, Array_Char *files);
 
 void free_list(Array_Char ***list, unsigned long size);
 
-unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles, unsigned char *srcDir, long srcDirSize, unsigned char *objDir, long objDirSize);
+unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles);
 
 /*
     Crée les dossiers si non existants.
@@ -83,7 +83,7 @@ unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles, unsigned char
 int mkdirs(char *path);
 
 // Libère la mémoire d'une liste de Array_Char en libérant la mémoire de chacun des éléments.
-void clean(Array_Char **objFiles, unsigned long objFilesSize, char *objDir, char *exe);
+void clean(Array_Char **objFiles, unsigned long objFilesSize);
 
 /*
     Recherche des données dans une partie de la mémoire.
@@ -123,5 +123,7 @@ void *search_data(void *src, void *researching, unsigned long fromIndex, unsigne
 DWORD get_program_file_name(char **buffer);
 
 unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength);
+
+char create_object(Array_Char *cFile, Array_Char *oFile);
 
 #endif
