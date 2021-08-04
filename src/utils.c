@@ -3,7 +3,29 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include <windows.h>
+
+void rem_allocate(void **array, void *start, size_t elements, size_t byteSize, unsigned long *arraySize) {
+    void *end = start + (elements * byteSize);
+    size_t size = (((*arraySize) * byteSize) + byteSize) - (end - *array);
+    memcpy(start, end, size);
+    (*arraySize) -= elements;
+    *array = realloc(*array, (*arraySize) * byteSize);
+}
+
+void move_allocate(void **array, void *pToAdd, void *src, size_t elements, size_t byteSize, unsigned long *arraySize) {
+    void *pTrueEnd = (*array) + (*arraySize) * byteSize;
+    void *pEnd = pToAdd + elements * byteSize;
+    unsigned long index = pToAdd - (*array);
+    unsigned long size = pTrueEnd - pToAdd;
+    (*arraySize) += elements;
+    *array = realloc(*array, (*arraySize) * byteSize);
+    pToAdd = (*array) + index;
+    pEnd = pToAdd + elements * byteSize;
+    memcpy(pEnd, pToAdd, size);
+    memcpy(pToAdd, src, elements * byteSize);
+}
 
 void add_allocate(void **array, void *src, size_t elements, size_t byteSize, unsigned long *arraySize) {
     unsigned long tempArraySize = *arraySize;
@@ -162,4 +184,139 @@ void free_list(Array_Char ***list, unsigned long size) {
     }
     free(*list);
     list = NULL;
+}
+
+unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles, unsigned char *srcDir, long srcDirSize, unsigned char *objDir, long objDirSize) {
+    Array_Char oFiles;
+    oFiles.length = cFiles->length;
+    oFiles.array = malloc(cFiles->length + 1);
+    memcpy(oFiles.array, cFiles->array, cFiles->length + 1);
+    unsigned long i;
+    for(i = 0UL; i < oFiles.length; i++) {
+        if(oFiles.array[i] == '.' && (oFiles.array[i + 1] == 'c' || oFiles.array[i + 1] == 'C'))
+            oFiles.array[i + 1] = 'o';
+    }
+    unsigned long size = list_files(dest, &oFiles);
+    free(oFiles.array);
+    void *ptr;
+    unsigned long ptrIndex;
+    unsigned long length = programFilenameLength;
+
+    unsigned char *objSlash = malloc(objDirSize + 1);
+    memcpy(objSlash, objDir, objDirSize);
+    objSlash[objDirSize] = '\\';
+
+    for(i = 0UL; i < size; i++) {
+        if((ptr = search_data((*dest)[i]->array, srcDir, 0UL, (*dest)[i]->length, srcDirSize))) {
+            ptrIndex = ptr - (void *) (*dest)[i]->array;
+            rem_allocate((void **) &(*dest)[i]->array, ptr, srcDirSize, 1, &(*dest)[i]->length);
+            ptr = (*dest)[i]->array + ptrIndex;
+            move_allocate((void **) &(*dest)[i]->array, ptr, objDir, objDirSize, 1, &(*dest)[i]->length);
+            (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
+            (*dest)[i]->array[(*dest)[i]->length] = '\0';
+        }else {
+            move_allocate((void **) &(*dest)[i]->array, &(*dest)[i]->array[get_last_backslash(&programFilename[programFilenameLength - 1], programFilenameLength)], objSlash, objDirSize + 1, 1, &(*dest)[i]->length);
+            (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
+            (*dest)[i]->array[(*dest)[i]->length] = '\0';
+        }
+    }
+    free(objSlash);
+    return size;
+}
+
+int mkdirs(char *path) {
+    char *p = NULL;
+    size_t len = strlen(path);
+    char slash;
+
+    // On enlève le dernier slash si y en a un
+    if(path[len - 1] == '/' || path[len - 1] == '\\')
+        path[len - 1] = '\0';
+
+    DIR *dir = opendir(path);
+    if(dir) {
+        closedir(dir);
+        return 1;
+    }
+
+    if(path[1] == ':' && (path[2] == '\\' || path[2] == '/'))
+        p = path + 3;
+    else
+        p = path + 1;
+
+    for(; *p; p++) {
+        if(*p == '/' || *p == '\\') {
+            slash = *p;
+            *p = '\0';
+            if(
+                #ifdef _WIN32
+                mkdir(path)
+                #else
+                mkdir(path, 777)
+                #endif
+                != 0
+            ) if(errno == EACCES) return 2;
+            *p = slash;
+        }
+    }
+    if(
+        #ifdef _WIN32
+        mkdir(path)
+        #else
+        mkdir(path, 777)
+        #endif
+        != 0
+    ) if(errno == EACCES) return 2;
+    return 0;
+}
+
+void clean(Array_Char **objFiles, unsigned long objFilesSize, char *objDir, char *exe) {
+    unsigned long i;
+    for(i = 0UL; i < objFilesSize; i++)
+        remove(objFiles[i]->array);
+    rmdir(objDir);
+    remove(exe);
+}
+
+void *search_data(void *src, void *researching, unsigned long fromIndex, unsigned long srcSize, unsigned long researchSize) {
+    if(fromIndex >= srcSize || srcSize < researchSize) return NULL;
+    void *found = NULL;
+    unsigned char *pSrc = (unsigned char *) src;
+    unsigned char *pResearching = (unsigned char *) researching;
+    unsigned long j, k;
+    char isFound = 0;
+    for(; fromIndex < srcSize - researchSize + 1; fromIndex++) {
+        if(pSrc[fromIndex] == pResearching[0]) {
+            k = fromIndex + 1;
+            isFound = 1;
+            for(j = 1; j < researchSize; j++) {
+                if(pSrc[k] != pResearching[j]) {
+                    isFound = 0;
+                    break;
+                }
+                k++;
+            }
+        }
+        if(isFound) {
+            found = &pSrc[fromIndex];
+            break;
+        }
+    }
+    return found;
+}
+
+DWORD get_program_file_name(char **buffer) {
+    char temp[0b1111111111111111];
+    DWORD length = GetModuleFileNameA(NULL, temp, 0b1111111111111111);
+    *buffer = malloc(length + 1);
+    memcpy(*buffer, temp, length + 1);
+    return length;
+}
+
+unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength) {
+    while(filenameLength >= 0) {
+        if(*filenameEnd == '\\') return filenameLength;
+        filenameEnd--;
+        filenameLength--;
+    }
 }

@@ -16,11 +16,18 @@
 extern const char *VERSION;
 extern const char *PROGRAM_NAME;
 
+extern DWORD programFilenameLength;
+extern char *programFilename;
+
 extern char programStatus;
 
+// Stock les sorties des commandes.
 extern HANDLE stdoutRead, stdoutWrite;
+// Stock les erreurs des commandes.
 extern HANDLE stderrRead, stderrWrite;
+// Pointeur vers stdout (WINAPI).
 extern HANDLE stdoutParent;
+// Pointeur vers stderr (WINAPI).
 extern HANDLE stderrParent;
 
 #endif

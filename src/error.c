@@ -27,3 +27,7 @@ void error_set_handle_infos(unsigned long errorCode) {
     wprintf(L"[%S] Erreur : Impossible de définir les informations sur le HANDLE (%lu)\n", PROGRAM_NAME, errorCode);
     programStatus = PROGRAM_STATUS_ERROR_SET_HANDLE_INFOS;
 }
+
+void error_create_folder(const char *folder) {
+    wprintf(L"[%S] Erreur : Impossible de créer le dossier -> %S\n", folder);
+}
