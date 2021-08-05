@@ -127,8 +127,8 @@ int main(int argc, char **argv) {
     if((temp = get_key_value(key4, fileBuffer, fileSize, &execNameLength)))
         copy_value(&execName, temp, execNameLength);
     else {
-        error_key_not_found(key4);
-        goto program_end;
+        execName = malloc(9);
+        memcpy(execName, "prog.exe", 9);
     }
 
     if((temp = get_key_value(key5, fileBuffer, fileSize, &includesLength)))
@@ -150,6 +150,8 @@ int main(int argc, char **argv) {
         copy_value(&linkOptions, temp, linkOptionsLength);
     else
         empty_str(&linkOptions);
+
+    wprintf(L"(%S)\n", execName);
 
     stdoutParent = GetStdHandle(STD_OUTPUT_HANDLE);
     stderrParent = GetStdHandle(STD_ERROR_HANDLE);

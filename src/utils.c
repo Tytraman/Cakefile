@@ -64,17 +64,20 @@ unsigned char *get_key_value(const char *key, unsigned char *fileBuffer, long fi
                 found++;
                 i++;
                 while(i < fileSize && *found != ':') {
+                    if(*found == '\r' || *found == '\n') return NULL;
                     i++;
                     found++;
                 }
-                if(i == fileSize) return found;
+                if(i == fileSize) return NULL;
                 found++;
                 i++;
                 while(i < fileSize && (*found == ' ' || *found == '\t')) {
+                    
                     found++;
                     i++;
                 }
-                if(i == fileSize) return found;
+                if(*found == '\r' || *found == '\n') return NULL;
+                if(i == fileSize)                    return NULL;
                 while(i < fileSize && fileBuffer[i] != '\r' && fileBuffer[i] != '\n') {
                     i++;
                     (*valueSize)++;
