@@ -59,10 +59,8 @@ void empty_str(unsigned char **str);
     Exécute la commande et stock le résultat dans`out` ou `err`.
 
     Retourne 0 en cas de succès, sinon :
-    1 quand le process n'a pas pu être créé,
-    2 quand les données n'ont pas pu être lues.
-
-    Un appel à GetLastError() permet d'avoir le code d'erreur.
+    - 1 quand le process n'a pas pu être créé,
+    - 2 quand les données n'ont pas pu être lues.
 */
 char execute_command(char *command, Array_Char *out, Array_Char *err);
 
@@ -124,6 +122,13 @@ DWORD get_program_file_name(char **buffer);
 
 unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength);
 
+/*
+    Crée un fichier o grâce à un fichier c.
+
+    Retourne 0 en cas de succès, sinon :
+    - 1 quand le process n'a pas pu être créé,
+    - 2 quand les données n'ont pas pu être lues.
+*/
 char create_object(Array_Char *cFile, Array_Char *oFile);
 
 #endif

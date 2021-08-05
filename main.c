@@ -44,11 +44,11 @@ int main(int argc, char **argv) {
                 L"Le format est clé : valeur\n\n"
                 L"Liste des options :\n"
                 L"[ Obligatoires ]\n"
-                L"- exec_name : nom du fichier exécutable final.\n"
                 L"- src_dir : dossier où se situent les fichiers sources.\n"
                 L"- obj_dir : dossier dans lequel les fichiers compilés logeront.\n"
                 L"- bin_dir : dossier dans lequel le fichier exécutable prendra ses aises.\n\n"
                 L"[ Optionnelles ]\n"
+                L"- exec_name : nom du fichier exécutable final (par défaut : prog.exe)\n"
                 L"- includes : Liste des dossiers includes externes à inclure.\n"
                 L"- libs : Liste des dossiers de librairies externes à inclure.\n"
                 L"- compile_options : options utilisées pendant la compilation.\n"
@@ -151,8 +151,6 @@ int main(int argc, char **argv) {
     else
         empty_str(&linkOptions);
 
-    wprintf(L"(%S)\n", execName);
-
     stdoutParent = GetStdHandle(STD_OUTPUT_HANDLE);
     stderrParent = GetStdHandle(STD_ERROR_HANDLE);
 
@@ -191,7 +189,7 @@ int main(int argc, char **argv) {
     char result;
     if((result = execute_command(dirC, &dirCout, &dirCerr)) != 0) {
         if(result == 1)
-            error_create_process(dirC, GetLastError());
+            error_create_process(dirC);
         else {
             free(dirCout.array);
             free(dirCerr.array);
@@ -238,7 +236,7 @@ int main(int argc, char **argv) {
         dirC[13] = 'h';
         if((result = execute_command(dirC, &dirHout, &dirHerr)) != 0) {
             if(result == 1)
-                error_create_process(dirC, GetLastError());
+                error_create_process(dirC);
             else {
                 free(dirHout.array);
                 free(dirHerr.array);
@@ -267,12 +265,51 @@ int main(int argc, char **argv) {
             if(result == 2) error_create_folder(binDir);
 
 
+
     if(mode == MODE_ALL || mode == MODE_RESET) {
         unsigned long i;
-        FILETIME lastModified;
+        FILETIME lastModifiedO, lastModifiedC;
+        HANDLE hFileO, hFileC;
         for(i = 0UL; i < listOsize; i++) {
-            if(GetFileAttributesA(listO[i]->array) == 0xffffffff)
-                create_object(listC[i], listO[i]);
+            if(GetFileAttributesA(listO[i]->array) == 0xffffffff) {
+                if(create_object(listC[i], listO[i]) == 0) {
+                    if((hFileO = CreateFileA(listO[i]->array, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                        if((hFileC = CreateFileA(listC[i]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                            GetFileTime(hFileC, NULL, NULL, &lastModifiedC);
+                            if(!SetFileTime(hFileO, NULL, NULL, &lastModifiedC))
+                                error_set_time(listO[i]->array);
+                            CloseHandle(hFileC);
+                        }
+                        CloseHandle(hFileO);
+                    }else
+                        error_open_file(listO[i]->array);
+                }
+            }else {
+                if((hFileO = CreateFileA(listO[i]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                    if((hFileC = CreateFileA(listC[i]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                        GetFileTime(hFileO, NULL, NULL, &lastModifiedO);
+                        GetFileTime(hFileC, NULL, NULL, &lastModifiedC);
+                        if(CompareFileTime(&lastModifiedO, &lastModifiedC) != 0) {
+                            CloseHandle(hFileO);
+                            CloseHandle(hFileC);
+                            if(create_object(listC[i], listO[i]) == 0) {
+                                if((hFileO = CreateFileA(listO[i]->array, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                                    SetFileTime(hFileO, NULL, NULL, &lastModifiedC);
+                                    CloseHandle(hFileO);
+                                }else
+                                    error_open_file(listO[i]->array);
+                            }
+                        }else {
+                            CloseHandle(hFileO);
+                            CloseHandle(hFileC);
+                        }
+                    }else {
+                        CloseHandle(hFileO);
+                        error_open_file(listC[i]->array);
+                    }
+                }else
+                    error_open_file(listO[i]->array);
+            }
         }
     }
 

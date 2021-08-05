@@ -357,7 +357,8 @@ char create_object(Array_Char *cFile, Array_Char *oFile) {
     wprintf(L"%S\n", &command[7]);
     char result;
     if((result = execute_command(command, NULL, NULL)) != 0)
-        if(result == 1) error_create_process(command, GetLastError());
-        else wprintf(L"Erreur lecture des données\n");
-    free(command);  
+        if(result == 1)
+            error_create_process(command);
+    free(command);
+    return result;
 }
