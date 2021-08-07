@@ -406,7 +406,7 @@ unsigned long check_who_must_compile(unsigned long **list, Array_Char **listO, A
                 if((hFileC = CreateFileA(listC[i]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
                     GetFileTime(hFileO, NULL, NULL, &lastModifiedO);
                     GetFileTime(hFileC, NULL, NULL, &lastModifiedC);
-                    if(CompareFileTime(&lastModifiedO, &lastModifiedC) != 0) {
+                    if(CompareFileTime(&lastModifiedO, &lastModifiedC) == -1) {
                         CloseHandle(hFileO);
                         CloseHandle(hFileC);
                         *list = realloc(*list, (number + 1) * sizeof(unsigned long));

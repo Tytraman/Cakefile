@@ -310,28 +310,16 @@ reset:
                 wprintf(L"==========Compilation==========\n");
                 unsigned long currentCompile;
                 for(currentCompile = 0UL; currentCompile < needCompileNumber; currentCompile++) {
-                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]]) == 0) {
-                        HANDLE hFileC, hFileO;
-                        if((hFileC = CreateFileA(listC[needCompile[currentCompile]]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
-                            if((hFileO = CreateFileA(listO[needCompile[currentCompile]]->array, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
-                                FILETIME timeC;
-                                GetFileTime(hFileC, NULL, NULL, &timeC);
-                                if(!SetFileTime(hFileO, NULL, NULL, &timeC))
-                                    error_set_time(listO[needCompile[currentCompile]]->array);
-                                CloseHandle(hFileO);
-                                CloseHandle(hFileC);
-                            }else
-                                CloseHandle(hFileC);
-                        }
+                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]]) == 0)
                         compileNumber++;
-                    }
                 }
                 wprintf(L"===============================\n\n\n");
             }
         case MODE_LINK:
+            if(mode == MODE_LINK) startTime = get_current_time_millis();
             if((result = mkdirs(binDir.array)) != 0)
                 if(result == 2) error_create_folder(binDir.array);
-            if(GetFileAttributesA(exec.array) == 0xffffffff || (compileNumber > 0 && compileNumber == needCompileNumber)) {
+            if(mode == MODE_LINK || GetFileAttributesA(exec.array) == 0xffffffff || (compileNumber > 0 && compileNumber == needCompileNumber)) {
                 wprintf(L"==========Link==========\n");
                 unsigned long linkCommandSize = 15UL + exec.length + linkOptions.length;
             
