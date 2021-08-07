@@ -5,6 +5,11 @@
 
 #include <windows.h>
 
+/*
+    Fichier pour définir toutes les variables et les constantes
+    communes à "tous" les fichiers.
+*/
+
 #define BUFF_SIZE 2048
 
 #define PROGRAM_STATUS_CAKEFILE_NOT_FOUND     1

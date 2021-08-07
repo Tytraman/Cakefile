@@ -1,4 +1,5 @@
-cake.exe
+bin
 Cakefile
 .vscode
 obj
+cake.exe

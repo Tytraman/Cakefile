@@ -9,6 +9,7 @@
 #include "include/global.h"
 #include "include/error.h"
 
+
 #define MODE_ALL   1
 #define MODE_RESET 2
 #define MODE_LINK  3
@@ -243,7 +244,6 @@ int main(int argc, char **argv) {
         if(dirCout.array)
             listOsize = list_o_files(&listO, &dirCout);
 
-    
     unsigned long i;
 
     unsigned long *needCompile = NULL;
@@ -279,8 +279,6 @@ reset:
                 free(dirCerr.array);
                 dirCout.array = NULL;
                 dirCerr.array = NULL;
-                for(i = 0UL; i < listCsize; i++)
-                    relative_path(listC[i]);
             }
             dirC[13] = 'h';
             if((result = execute_command(dirC, &dirHout, &dirHerr)) != 0) {
@@ -299,8 +297,6 @@ reset:
                 free(dirHerr.array);
                 dirHout.array = NULL;
                 dirHerr.array = NULL;
-                for(i = 0UL; i < listHsize; i++)
-                    relative_path(listH[i]);
             }
             if((result = mkdirs(objDir.array)) != 0)
                 if(result == 2) error_create_folder(objDir.array);

@@ -192,6 +192,7 @@ unsigned long list_files(Array_Char ***dest, Array_Char *files) {
             ar.array = malloc(length + 1);
             memcpy(ar.array, begin, length);
             ar.array[length] = '\0';
+            relative_path(&ar);
             (*(*dest)[size]) = ar;
             size++;
             i++;
@@ -242,14 +243,12 @@ unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles) {
             (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
             (*dest)[i]->array[(*dest)[i]->length] = '\0';
         }else {
-            move_allocate((void **) &(*dest)[i]->array, &(*dest)[i]->array[get_last_backslash(&pwd.array[pwd.length - 1], pwd.length)], objSlash, objDir.length + 1, 1, &(*dest)[i]->length);
+            move_allocate((void **) &(*dest)[i]->array, (*dest)[i]->array, objSlash, objDir.length + 1, 1, &(*dest)[i]->length);
             (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
             (*dest)[i]->array[(*dest)[i]->length] = '\0';
         }
     }
     free(objSlash);
-    for(i = 0UL; i < size; i++)
-        relative_path((*dest)[i]);
     return size;
 }
 
@@ -353,11 +352,13 @@ DWORD get_current_process_location(char **buffer) {
 }
 
 unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength) {
-    while(filenameLength >= 0) {
+    while(1) {
         if(*filenameEnd == '\\') return filenameLength;
         filenameEnd--;
+        if(filenameLength == 0) break;
         filenameLength--;
     }
+    return filenameLength;
 }
 
 char create_object(Array_Char *cFile, Array_Char *oFile) {
@@ -414,6 +415,7 @@ unsigned long check_who_must_compile(unsigned long **list, Array_Char **listO, A
                     }else {
                         CloseHandle(hFileO);
                         CloseHandle(hFileC);
+                        check_includes(listC[i], listO[i], list, &number, i);
                     }
                 }else {
                     CloseHandle(hFileO);
@@ -427,13 +429,109 @@ unsigned long check_who_must_compile(unsigned long **list, Array_Char **listO, A
 }
 
 unsigned long str_replace(Array_Char *str, char toReplace, char replaceWith) {
+    return str_replace_c(str->array, str->length, toReplace, replaceWith);
+}
+
+unsigned long str_replace_c(char *str, unsigned long strSize, char toReplace, char replaceWith) {
     unsigned long number = 0UL;
     unsigned long i;
-    for(i = 0UL; i < str->length; i++) {
-        if(str->array[i] == toReplace) {
-            str->array[i] = replaceWith;
+    for(i = 0UL; i < strSize; i++) {
+        if(str[i] == toReplace) {
+            str[i] = replaceWith;
             number++;
         }
     }
     return number;
+}
+
+void check_includes(Array_Char *fileC, Array_Char *fileO, unsigned long **list, unsigned long *listSize, unsigned long current) {
+    FILE *pFile = fopen(fileC->array, "rb");
+    if(!pFile)
+        error_file_not_found(fileC->array);
+    
+    Array_Char **listI = NULL;
+    unsigned long listIsize = 0UL;
+    
+    unsigned char buff[BUFF_SIZE];
+
+    long fileSize = get_file_size(pFile);
+    unsigned char *fileBuffer = malloc(fileSize);
+    size_t read, total = 0;
+
+    do {
+        read = fread(buff, 1, BUFF_SIZE, pFile);
+        memcpy(&fileBuffer[total], buff, read);
+        total += read;
+    }while(read > 0);
+
+    char search[] = { '#', 'i', 'n', 'c', 'l', 'u', 'd', 'e' };
+
+    unsigned char *ptr;
+    read = 0UL;
+
+    unsigned long valueLength;
+
+    while((ptr = search_data(fileBuffer, search, read, fileSize, 8))) {
+        read = (ptr - fileBuffer) + 1;
+        while(fileBuffer[read] != '\"') {
+            if(read == fileSize || fileBuffer[read++] == '\n')
+                goto end_loop_search_include;
+        }
+        valueLength = 0UL;
+        read++;
+        ptr = &fileBuffer[read++];
+        while(fileBuffer[read] != '\"') {
+            if(read == fileSize || fileBuffer[read++] == '\n')
+                goto end_loop_search_include;
+            valueLength++;
+        }
+        valueLength++;
+        listI = realloc(listI, (listIsize + 1) * sizeof(Array_Char *));
+        listI[listIsize] = malloc(sizeof(Array_Char));
+        listI[listIsize]->array = malloc(valueLength + 1);
+        listI[listIsize]->length = valueLength;
+        memcpy(listI[listIsize]->array, ptr, valueLength);
+        listI[listIsize]->array[valueLength] = '\0';
+        listIsize++;
+        end_loop_search_include: ;
+    }
+
+    for(read = 0UL; read < listIsize; read++) {
+        str_replace(listI[read], '/', '\\');
+
+        unsigned long lastBackslash = get_last_backslash(&fileC->array[fileC->length - 1], fileC->length);
+        
+        unsigned long cPathSize = lastBackslash + listI[read]->length;
+        char *cPath = malloc(cPathSize + 1);
+        if(lastBackslash > 0)
+            memcpy(cPath, fileC->array, lastBackslash);
+        memcpy(&cPath[lastBackslash], listI[read]->array, listI[read]->length);
+        cPath[cPathSize] = '\0';
+        
+        HANDLE hFileO, hFileH;
+        if((hFileH = CreateFileA(cPath, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+            if((hFileO = CreateFileA(fileO->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                FILETIME lastModifiedO, lastModifiedH;
+                GetFileTime(hFileO, NULL, NULL, &lastModifiedO);
+                GetFileTime(hFileH, NULL, NULL, &lastModifiedH);
+                if(CompareFileTime(&lastModifiedO, &lastModifiedH) == -1) {
+                    *list = realloc(*list, (*listSize + 1) * sizeof(unsigned long));
+                    (*list)[(*listSize)++] = current;
+                }
+                CloseHandle(hFileO);
+                CloseHandle(hFileH);
+            }else {
+                CloseHandle(hFileH);
+                error_open_file(fileO->array);
+            }
+        }else
+            error_open_file(cPath);
+
+        free(listI[read]->array);
+        free(listI[read]);
+        free(cPath);
+    }
+    free(listI);
+    free(fileBuffer);
+    fclose(pFile);
 }

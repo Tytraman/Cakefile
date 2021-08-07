@@ -9,6 +9,7 @@ typedef struct Array_Char {
     char *array;
 } Array_Char;
 
+
 /*
     Supprime une partie d'un tableau dynamique.
 
@@ -141,5 +142,8 @@ unsigned long long get_current_time_millis();
 unsigned long check_who_must_compile(unsigned long **list, Array_Char **listO, Array_Char **listC, unsigned long listOsize);
 
 unsigned long str_replace(Array_Char *str, char toReplace, char replaceWith);
+unsigned long str_replace_c(char *str, unsigned long strSize, char toReplace, char replaceWith);
+
+void check_includes(Array_Char *fileC, Array_Char *fileO, unsigned long **list, unsigned long *listSize, unsigned long current);
 
 #endif
