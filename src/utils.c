@@ -307,14 +307,6 @@ int mkdirs(char *path) {
     return 0;
 }
 
-void clean(Array_Char **objFiles, unsigned long objFilesSize) {
-    unsigned long i;
-    for(i = 0UL; i < objFilesSize; i++)
-        remove(objFiles[i]->array);
-    rmdir(objDir.array);
-    remove(exec.array);
-}
-
 void *search_data(void *src, void *researching, unsigned long fromIndex, unsigned long srcSize, unsigned long researchSize) {
     if(fromIndex >= srcSize || srcSize < researchSize) return NULL;
     void *found = NULL;

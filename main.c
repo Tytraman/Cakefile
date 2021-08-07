@@ -239,131 +239,138 @@ int main(int argc, char **argv) {
     Array_Char **listO = NULL;
     unsigned long listOsize = 0UL;
 
-    if(mode == MODE_ALL || mode == MODE_RESET || mode == MODE_LINK || mode == MODE_TEST)
+    if(mode == MODE_ALL || mode == MODE_RESET || mode == MODE_LINK || mode == MODE_CLEAN)
         if(dirCout.array)
             listOsize = list_o_files(&listO, &dirCout);
 
     
     unsigned long i;
 
-    // Listing des fichiers C et H
-    if(mode == MODE_ALL || mode == MODE_RESET) {
-        if(dirCout.array) {
-            listCsize = list_files(&listC, &dirCout);
-            free(dirCout.array);
-            free(dirCerr.array);
-            dirCout.array = NULL;
-            dirCerr.array = NULL;
-            for(i = 0UL; i < listCsize; i++)
-                relative_path(listC[i]);
-        }
-        dirC[13] = 'h';
-        if((result = execute_command(dirC, &dirHout, &dirHerr)) != 0) {
-            if(result == 1)
-                error_create_process(dirC);
-            else {
+    unsigned long *needCompile = NULL;
+    unsigned long needCompileNumber = 0UL;
+
+    unsigned long compileNumber = 0UL;
+    unsigned long long startTime;
+
+    unsigned long cleanCommandSize = 25 + objDir.length * 2;
+    char *cleanCommand = malloc(cleanCommandSize + 1);
+    sprintf(cleanCommand, "cmd /C if exist %s rd /q/s %s", objDir.array, objDir.array);
+
+    switch(mode) {
+        case MODE_CLEAN:
+clean:
+            wprintf(L"Nettoyage...\n");
+            if((result = execute_command(cleanCommand, NULL, NULL)) != 0) {
+                if(result == 1) {
+                    error_create_process(cleanCommand);
+                    goto pre_end1;
+                }
+            }
+            remove(exec.array);
+            if(mode == MODE_RESET) goto reset;
+            else goto pre_end1;
+        case MODE_RESET:
+            goto clean;
+reset:
+        case MODE_ALL:
+            if(dirCout.array) {
+                listCsize = list_files(&listC, &dirCout);
+                free(dirCout.array);
+                free(dirCerr.array);
+                dirCout.array = NULL;
+                dirCerr.array = NULL;
+                for(i = 0UL; i < listCsize; i++)
+                    relative_path(listC[i]);
+            }
+            dirC[13] = 'h';
+            if((result = execute_command(dirC, &dirHout, &dirHerr)) != 0) {
+                if(result == 1)
+                    error_create_process(dirC);
+                else {
+                    free(dirHout.array);
+                    free(dirHerr.array);
+                    dirHout.array = NULL;
+                    dirHerr.array = NULL;
+                }
+            }
+            if(dirHout.array) {
+                listHsize = list_files(&listH, &dirHout);
                 free(dirHout.array);
                 free(dirHerr.array);
                 dirHout.array = NULL;
                 dirHerr.array = NULL;
+                for(i = 0UL; i < listHsize; i++)
+                    relative_path(listH[i]);
             }
-        }
-        if(dirHout.array) {
-            listHsize = list_files(&listH, &dirHout);
-            free(dirHout.array);
-            free(dirHerr.array);
-            dirHout.array = NULL;
-            dirHerr.array = NULL;
-            for(i = 0UL; i < listHsize; i++)
-                relative_path(listH[i]);
-        }
-    }
-    
-    // Création des dossiers nécessaires
-    if(mode == MODE_ALL || mode == MODE_RESET) {
-        if((result = mkdirs(objDir.array)) != 0)
-            if(result == 2) error_create_folder(objDir.array);
-
-        if((result = mkdirs(binDir.array)) != 0)
-            if(result == 2) error_create_folder(binDir.array);
-    }else if(mode == MODE_LINK)
-        if((result = mkdirs(binDir.array)) != 0)
-            if(result == 2) error_create_folder(binDir.array);
-
-
-    unsigned long *needCompile = NULL;
-    unsigned long needCompileNumber = check_who_must_compile(&needCompile, listO, listC, listOsize);
-
-    unsigned long compileNumber = 0UL;
-    unsigned long long startTime = get_current_time_millis();
-
-    if(mode == MODE_ALL || mode == MODE_RESET) {
-        if(needCompileNumber > 0) {
-            wprintf(L"==========Compilation==========\n");
-            unsigned long currentCompile;
-            for(currentCompile = 0UL; currentCompile < needCompileNumber; currentCompile++) {
-                if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]]) == 0) {
-                    HANDLE hFileC, hFileO;
-                    if((hFileC = CreateFileA(listC[needCompile[currentCompile]]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
-                        if((hFileO = CreateFileA(listO[needCompile[currentCompile]]->array, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
-                            FILETIME timeC;
-                            GetFileTime(hFileC, NULL, NULL, &timeC);
-                            if(!SetFileTime(hFileO, NULL, NULL, &timeC))
-                                error_set_time(listO[needCompile[currentCompile]]->array);
-                            CloseHandle(hFileO);
-                            CloseHandle(hFileC);
-                        }else
-                            CloseHandle(hFileC);
+            if((result = mkdirs(objDir.array)) != 0)
+                if(result == 2) error_create_folder(objDir.array);
+            needCompileNumber = check_who_must_compile(&needCompile, listO, listC, listOsize);
+            startTime = get_current_time_millis();
+            if(needCompileNumber > 0) {
+                wprintf(L"==========Compilation==========\n");
+                unsigned long currentCompile;
+                for(currentCompile = 0UL; currentCompile < needCompileNumber; currentCompile++) {
+                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]]) == 0) {
+                        HANDLE hFileC, hFileO;
+                        if((hFileC = CreateFileA(listC[needCompile[currentCompile]]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                            if((hFileO = CreateFileA(listO[needCompile[currentCompile]]->array, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                                FILETIME timeC;
+                                GetFileTime(hFileC, NULL, NULL, &timeC);
+                                if(!SetFileTime(hFileO, NULL, NULL, &timeC))
+                                    error_set_time(listO[needCompile[currentCompile]]->array);
+                                CloseHandle(hFileO);
+                                CloseHandle(hFileC);
+                            }else
+                                CloseHandle(hFileC);
+                        }
+                        compileNumber++;
                     }
-                    compileNumber++;
                 }
+                wprintf(L"===============================\n\n\n");
             }
-            wprintf(L"===============================\n\n\n");
-        }
-    }
+        case MODE_LINK:
+            if((result = mkdirs(binDir.array)) != 0)
+                if(result == 2) error_create_folder(binDir.array);
+            if(GetFileAttributesA(exec.array) == 0xffffffff || (compileNumber > 0 && compileNumber == needCompileNumber)) {
+                wprintf(L"==========Link==========\n");
+                unsigned long linkCommandSize = 15UL + exec.length + linkOptions.length;
+            
+                char *linkCommand = NULL;
+                unsigned long i, j = 11UL;
+                for(i = 0UL; i < listOsize; i++)
+                    linkCommandSize += listO[i]->length + 1;
 
+                linkCommand = malloc(linkCommandSize + 1);
+                char cmdGcc[] = { 'c', 'm', 'd', ' ', '/', 'C', ' ', 'g', 'c', 'c', ' ' };
+                char space = ' ';
+                char output[] = { '-', 'o', ' ' };
+                memcpy(linkCommand, cmdGcc, 11);
 
-    // On link tous les objets ensemble :
-    if(mode == MODE_ALL || mode == MODE_RESET || mode == MODE_LINK) {
-        if(GetFileAttributesA(exec.array) == 0xffffffff || (compileNumber > 0 && compileNumber == needCompileNumber)) {
-            wprintf(L"==========Link==========\n");
-            unsigned long linkCommandSize = 15UL + exec.length + linkOptions.length;
-        
-            char *linkCommand = NULL;
-            unsigned long i, j = 11UL;
-            for(i = 0UL; i < listOsize; i++)
-                linkCommandSize += listO[i]->length + 1;
+                for(i = 0UL; i < listOsize; i++) {
+                    memcpy(&linkCommand[j], listO[i]->array, listO[i]->length);
+                    j += listO[i]->length;
+                    memcpy(&linkCommand[j++], &space, 1);
+                }
 
-            linkCommand = malloc(linkCommandSize + 1);
-            char cmdGcc[] = { 'c', 'm', 'd', ' ', '/', 'C', ' ', 'g', 'c', 'c', ' ' };
-            char space = ' ';
-            char output[] = { '-', 'o', ' ' };
-            memcpy(linkCommand, cmdGcc, 11);
-
-            for(i = 0UL; i < listOsize; i++) {
-                memcpy(&linkCommand[j], listO[i]->array, listO[i]->length);
-                j += listO[i]->length;
+                memcpy(&linkCommand[j], output, 3);
+                j += 3;
+                memcpy(&linkCommand[j], exec.array, exec.length);
+                j += exec.length;
                 memcpy(&linkCommand[j++], &space, 1);
+
+                memcpy(&linkCommand[j], linkOptions.array, linkOptions.length);
+                linkCommand[linkCommandSize] = '\0';
+
+                wprintf(L"%S\n", &linkCommand[7]);
+                char linkResult;
+                if((linkResult = execute_command(linkCommand, NULL, NULL)) != 0) {
+                    if(linkResult == 1)
+                        error_create_process(linkCommand);
+                }
+                free(linkCommand);
+                wprintf(L"========================\n\n\n");
             }
-
-            memcpy(&linkCommand[j], output, 3);
-            j += 3;
-            memcpy(&linkCommand[j], exec.array, exec.length);
-            j += exec.length;
-            memcpy(&linkCommand[j++], &space, 1);
-
-            memcpy(&linkCommand[j], linkOptions.array, linkOptions.length);
-            linkCommand[linkCommandSize] = '\0';
-
-            wprintf(L"%S\n", &linkCommand[7]);
-            char linkResult;
-            if((linkResult = execute_command(linkCommand, NULL, NULL)) != 0) {
-                if(linkResult == 1)
-                    error_create_process(linkCommand);
-            }
-            free(linkCommand);
-            wprintf(L"========================\n\n\n");
-        }
+            break;
     }
 
     free(needCompile);
@@ -411,6 +418,7 @@ program_end:
     free(linkOptions.array);
     free(programFilename.array);
     free(exec.array);
+    free(cleanCommand);
     wprintf(L"[%S] Terminé %s\n", PROGRAM_NAME, (programStatus != 0 ? L"avec une erreur..." : L"avec succès !"));
     return (programStatus != 0 ? EXIT_FAILURE : EXIT_SUCCESS);
 }

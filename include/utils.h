@@ -82,9 +82,6 @@ void relative_path(Array_Char *path);
 */
 int mkdirs(char *path);
 
-// Libère la mémoire d'une liste de Array_Char en libérant la mémoire de chacun des éléments.
-void clean(Array_Char **objFiles, unsigned long objFilesSize);
-
 /*
     Recherche des données dans une partie de la mémoire.
     Fonction universelle, on peut rechercher n'importe quoi n'importe où.
