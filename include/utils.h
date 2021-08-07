@@ -131,4 +131,10 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
 */
 char create_object(Array_Char *cFile, Array_Char *oFile);
 
+unsigned long long filetime_to_ularge(FILETIME *ft);
+
+unsigned long long filetime_diff(FILETIME *ft1, FILETIME *ft2);
+
+unsigned long long get_current_time_millis();
+
 #endif

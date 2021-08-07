@@ -362,3 +362,20 @@ char create_object(Array_Char *cFile, Array_Char *oFile) {
     free(command);
     return result;
 }
+
+unsigned long long filetime_to_ularge(FILETIME *ft) {
+    ULARGE_INTEGER uLarge;
+    uLarge.HighPart = ft->dwHighDateTime;
+    uLarge.LowPart  = ft->dwLowDateTime;
+    return uLarge.QuadPart;
+}
+
+unsigned long long filetime_diff(FILETIME *ft1, FILETIME *ft2) {
+    return filetime_to_ularge(ft1) - filetime_to_ularge(ft2);
+}
+
+unsigned long long get_current_time_millis() {
+    FILETIME ft;
+    GetSystemTimeAsFileTime(&ft);
+    return filetime_to_ularge(&ft) / 10000ULL;
+}
