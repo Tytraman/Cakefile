@@ -50,10 +50,10 @@ long get_file_size(FILE *file);
 unsigned char *get_key_value(const char *key, unsigned char *fileBuffer, long fileSize, long *valueSize);
 
 // Copie la valeur d'une clé récupérée grâce à get_key_value().
-void copy_value(unsigned char **buffer, unsigned char *src, long valueSize);
+void copy_value(char **buffer, unsigned char *src, long valueSize);
 
 // Réalloue `str` à 1 octet et le définie avec '\\0'
-void empty_str(unsigned char **str);
+void empty_str(char **str);
 
 /*
     Exécute la commande et stock le résultat dans`out` ou `err`.
@@ -142,5 +142,7 @@ unsigned long long filetime_diff(FILETIME *ft1, FILETIME *ft2);
 unsigned long long get_current_time_millis();
 
 unsigned long check_who_must_compile(unsigned long **list, Array_Char **listO, Array_Char **listC, unsigned long listOsize);
+
+unsigned long str_replace(Array_Char *str, char toReplace, char replaceWith);
 
 #endif

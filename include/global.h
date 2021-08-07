@@ -33,26 +33,15 @@ extern HANDLE stdoutParent;
 extern HANDLE stderrParent;
 
 
-extern long srcDirLength;
-extern unsigned char *srcDir;
+extern Array_Char srcDir;
+extern Array_Char objDir;
+extern Array_Char binDir;
 
-extern long objDirLength;
-extern unsigned char *objDir;
+extern Array_Char includes;
+extern Array_Char libs;
 
-extern long binDirLength;
-extern unsigned char *binDir;
-
-extern long includesLength;
-extern unsigned char *includes;
-
-extern long libsLength;
-extern unsigned char *libs;
-
-extern long compileOptionsLength;
-extern unsigned char *compileOptions;
-
-extern long linkOptionsLength;
-extern unsigned char *linkOptions;
+extern Array_Char compileOptions;
+extern Array_Char linkOptions;
 
 extern Array_Char exec;
 

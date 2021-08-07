@@ -89,13 +89,13 @@ unsigned char *get_key_value(const char *key, unsigned char *fileBuffer, long fi
     return found;
 }
 
-void copy_value(unsigned char **buffer, unsigned char *src, long valueSize) {
+void copy_value(char **buffer, unsigned char *src, long valueSize) {
         *buffer = malloc(valueSize + 1);
         memcpy(*buffer, src, valueSize);
         (*buffer)[valueSize] = '\0';
 }
 
-void empty_str(unsigned char **str) {
+void empty_str(char **str) {
     free(*str);
     *str = malloc(1);
     (*str)[0] = '\0';
@@ -229,20 +229,20 @@ unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles) {
     unsigned long ptrIndex;
     unsigned long length = pwd.length;
 
-    unsigned char *objSlash = malloc(objDirLength + 1);
-    memcpy(objSlash, objDir, objDirLength);
-    objSlash[objDirLength] = '\\';
+    unsigned char *objSlash = malloc(objDir.length + 1);
+    memcpy(objSlash, objDir.array, objDir.length);
+    objSlash[objDir.length] = '\\';
 
     for(i = 0UL; i < size; i++) {
-        if((ptr = search_data((*dest)[i]->array, srcDir, 0UL, (*dest)[i]->length, srcDirLength))) {
+        if((ptr = search_data((*dest)[i]->array, srcDir.array, 0UL, (*dest)[i]->length, srcDir.length))) {
             ptrIndex = ptr - (void *) (*dest)[i]->array;
-            rem_allocate((void **) &(*dest)[i]->array, ptr, srcDirLength, 1, &(*dest)[i]->length);
+            rem_allocate((void **) &(*dest)[i]->array, ptr, srcDir.length, 1, &(*dest)[i]->length);
             ptr = (*dest)[i]->array + ptrIndex;
-            move_allocate((void **) &(*dest)[i]->array, ptr, objDir, objDirLength, 1, &(*dest)[i]->length);
+            move_allocate((void **) &(*dest)[i]->array, ptr, objDir.array, objDir.length, 1, &(*dest)[i]->length);
             (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
             (*dest)[i]->array[(*dest)[i]->length] = '\0';
         }else {
-            move_allocate((void **) &(*dest)[i]->array, &(*dest)[i]->array[get_last_backslash(&pwd.array[pwd.length - 1], pwd.length)], objSlash, objDirLength + 1, 1, &(*dest)[i]->length);
+            move_allocate((void **) &(*dest)[i]->array, &(*dest)[i]->array[get_last_backslash(&pwd.array[pwd.length - 1], pwd.length)], objSlash, objDir.length + 1, 1, &(*dest)[i]->length);
             (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
             (*dest)[i]->array[(*dest)[i]->length] = '\0';
         }
@@ -311,7 +311,7 @@ void clean(Array_Char **objFiles, unsigned long objFilesSize) {
     unsigned long i;
     for(i = 0UL; i < objFilesSize; i++)
         remove(objFiles[i]->array);
-    rmdir(objDir);
+    rmdir(objDir.array);
     remove(exec.array);
 }
 
@@ -371,9 +371,9 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
 char create_object(Array_Char *cFile, Array_Char *oFile) {
     char *command = NULL;
     unsigned long commandSize = 0UL;
-    commandSize = 19 + cFile->length + oFile->length + compileOptionsLength;
+    commandSize = 19 + cFile->length + oFile->length + compileOptions.length;
     command = malloc(commandSize + 1);
-    sprintf(command, "cmd /C gcc -c %s -o %s %s", cFile->array, oFile->array, compileOptions);
+    sprintf(command, "cmd /C gcc -c %s -o %s %s", cFile->array, oFile->array, compileOptions.array);
     wprintf(L"%S\n", &command[7]);
     char result;
     if((result = execute_command(command, NULL, NULL)) != 0)
@@ -434,4 +434,14 @@ unsigned long check_who_must_compile(unsigned long **list, Array_Char **listO, A
     return number;
 }
 
-
+unsigned long str_replace(Array_Char *str, char toReplace, char replaceWith) {
+    unsigned long number = 0UL;
+    unsigned long i;
+    for(i = 0UL; i < str->length; i++) {
+        if(str->array[i] == toReplace) {
+            str->array[i] = replaceWith;
+            number++;
+        }
+    }
+    return number;
+}

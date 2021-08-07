@@ -16,6 +16,8 @@
 #define MODE_TEST  5
 
 int main(int argc, char **argv) {
+
+    // On vérifie que le programme est exécuté via un terminal, et pas en double cliquant dessus
     HWND consoleWnd = GetConsoleWindow();
     DWORD processID;
     GetWindowThreadProcessId(consoleWnd, &processID);
@@ -25,11 +27,13 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
     
+    // On met la console en UTF16 pour pouvoir écrire avec de l'unicode
     _setmode(_fileno(stdin), _O_U16TEXT);
     _setmode(_fileno(stdout), _O_U16TEXT);
 
-    char mode = MODE_ALL;
+    char mode = MODE_ALL;   // Si l'utilisateur ne spécifie pas de mode, on le met en MODE_ALL par défaut.
 
+    // On vérifie les arguments passés si il y en a
     if(argc > 1) {
         if(strcmp(argv[1], "all") == 0)
             mode = MODE_ALL;
@@ -63,7 +67,7 @@ int main(int argc, char **argv) {
             );
             return EXIT_SUCCESS;
         }else if(strcmp(argv[1], "--version") == 0) {
-            wprintf(L"%Sx%S version %S\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
+            wprintf(L"%S x%S version %S\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
             return EXIT_SUCCESS;
         }
     }
@@ -95,6 +99,15 @@ int main(int argc, char **argv) {
     fclose(pFile);
 
     // Récupération des paramètres :
+
+    srcDir.array         = NULL;
+    objDir.array         = NULL;
+    binDir.array         = NULL;
+    includes.array       = NULL;
+    libs.array           = NULL;
+    compileOptions.array = NULL;
+    linkOptions.array    = NULL;
+
     unsigned char *temp;
 
     char key1[] = "src_dir";
@@ -106,30 +119,29 @@ int main(int argc, char **argv) {
     char key7[] = "compile_options";
     char key8[] = "link_options";
 
-    if((temp = get_key_value(key1, fileBuffer, fileSize, &srcDirLength)))
-        copy_value(&srcDir, temp, srcDirLength);
+    if((temp = get_key_value(key1, fileBuffer, fileSize, &srcDir.length)))
+        copy_value(&srcDir.array, temp, srcDir.length);
     else {
         error_key_not_found(key1);
         goto program_end;
     }
 
-    
-    if((temp = get_key_value(key2, fileBuffer, fileSize, &objDirLength)))
-        copy_value(&objDir, temp, objDirLength);
+    if((temp = get_key_value(key2, fileBuffer, fileSize, &objDir.length)))
+        copy_value(&objDir.array, temp, objDir.length);
     else {
         error_key_not_found(key2);
         goto program_end;
     }
 
-    if((temp = get_key_value(key3, fileBuffer, fileSize, &binDirLength)))
-        copy_value(&binDir, temp, binDirLength);
+    if((temp = get_key_value(key3, fileBuffer, fileSize, &binDir.length)))
+        copy_value(&binDir.array, temp, binDir.length);
     else {
         error_key_not_found(key3);
         goto program_end;
     }
 
     long execNameLength;
-    unsigned char *execName = NULL;
+    char *execName = NULL;
     if((temp = get_key_value(key4, fileBuffer, fileSize, &execNameLength)))
         copy_value(&execName, temp, execNameLength);
     else {
@@ -137,25 +149,25 @@ int main(int argc, char **argv) {
         memcpy(execName, "prog.exe", 9);
     }
 
-    if((temp = get_key_value(key5, fileBuffer, fileSize, &includesLength)))
-        copy_value(&includes, temp, includesLength);
+    if((temp = get_key_value(key5, fileBuffer, fileSize, &includes.length)))
+        copy_value(&includes.array, temp, includes.length);
     else
-        empty_str(&includes);
+        empty_str(&includes.array);
 
-    if((temp = get_key_value(key6, fileBuffer, fileSize, &libsLength)))
-        copy_value(&libs, temp, libsLength);
+    if((temp = get_key_value(key6, fileBuffer, fileSize, &libs.length)))
+        copy_value(&libs.array, temp, libs.length);
     else
-        empty_str(&libs);
+        empty_str(&libs.array);
 
-    if((temp = get_key_value(key7, fileBuffer, fileSize, &compileOptionsLength)))
-        copy_value(&compileOptions, temp, compileOptionsLength);
+    if((temp = get_key_value(key7, fileBuffer, fileSize, &compileOptions.length)))
+        copy_value(&compileOptions.array, temp, compileOptions.length);
     else
-        empty_str(&compileOptions);
+        empty_str(&compileOptions.array);
 
-    if((temp = get_key_value(key8, fileBuffer, fileSize, &linkOptionsLength)))
-        copy_value(&linkOptions, temp, linkOptionsLength);
+    if((temp = get_key_value(key8, fileBuffer, fileSize, &linkOptions.length)))
+        copy_value(&linkOptions.array, temp, linkOptions.length);
     else
-        empty_str(&linkOptions);
+        empty_str(&linkOptions.array);
 
     stdoutParent = GetStdHandle(STD_OUTPUT_HANDLE);
     stderrParent = GetStdHandle(STD_ERROR_HANDLE);
@@ -205,14 +217,15 @@ int main(int argc, char **argv) {
     }
 
     /* Le nom de l'exe est nécessaire dans tous les modes */
-    exec.length = binDirLength + execNameLength + 1;
+    exec.length = binDir.length + execNameLength + 1;
     exec.array = malloc(exec.length);
-    memcpy(exec.array, binDir, binDirLength);
-    exec.array[binDirLength] = '\\';
-    memcpy(&exec.array[binDirLength + 1], execName, execNameLength);
+    memcpy(exec.array, binDir.array, binDir.length);
+    exec.array[binDir.length] = '\\';
+    memcpy(&exec.array[binDir.length + 1], execName, execNameLength);
     exec.array[exec.length] = '\0';
     free(execName);
     execName = NULL;
+    str_replace(&exec, '/', '\\');
 
     /* La liste des fichiers C est nécessaire que pour compiler */
     Array_Char **listC = NULL;
@@ -268,14 +281,14 @@ int main(int argc, char **argv) {
     
     // Création des dossiers nécessaires
     if(mode == MODE_ALL || mode == MODE_RESET) {
-        if((result = mkdirs(objDir)) != 0)
-            if(result == 2) error_create_folder(objDir);
+        if((result = mkdirs(objDir.array)) != 0)
+            if(result == 2) error_create_folder(objDir.array);
 
-        if((result = mkdirs(binDir)) != 0)
-            if(result == 2) error_create_folder(binDir);
+        if((result = mkdirs(binDir.array)) != 0)
+            if(result == 2) error_create_folder(binDir.array);
     }else if(mode == MODE_LINK)
-        if((result = mkdirs(binDir)) != 0)
-            if(result == 2) error_create_folder(binDir);
+        if((result = mkdirs(binDir.array)) != 0)
+            if(result == 2) error_create_folder(binDir.array);
 
 
     unsigned long *needCompile = NULL;
@@ -314,7 +327,7 @@ int main(int argc, char **argv) {
     if(mode == MODE_ALL || mode == MODE_RESET || mode == MODE_LINK) {
         if(GetFileAttributesA(exec.array) == 0xffffffff || (compileNumber > 0 && compileNumber == needCompileNumber)) {
             wprintf(L"==========Link==========\n");
-            unsigned long linkCommandSize = 15UL + exec.length + linkOptionsLength;
+            unsigned long linkCommandSize = 15UL + exec.length + linkOptions.length;
         
             char *linkCommand = NULL;
             unsigned long i, j = 11UL;
@@ -339,7 +352,7 @@ int main(int argc, char **argv) {
             j += exec.length;
             memcpy(&linkCommand[j++], &space, 1);
 
-            memcpy(&linkCommand[j], linkOptions, linkOptionsLength);
+            memcpy(&linkCommand[j], linkOptions.array, linkOptions.length);
             linkCommand[linkCommandSize] = '\0';
 
             wprintf(L"%S\n", &linkCommand[7]);
@@ -372,7 +385,7 @@ int main(int argc, char **argv) {
             wprintf(L"Linkés en %llu ms.\n", endTime - startTime);
             break;
     }
-    wprintf(L"=========================\n");
+    wprintf(L"=========================\n\n");
 
 pre_end1:
     // Libération de la mémoire des listes de fichiers
@@ -388,14 +401,14 @@ close_handles:
     CloseHandle(stderrRead);
     CloseHandle(stderrWrite);
 program_end:
-    free(objDir);
-    free(binDir);
+    free(objDir.array);
+    free(binDir.array);
     free(execName);
     free(fileBuffer);
-    free(includes);
-    free(libs);
-    free(compileOptions);
-    free(linkOptions);
+    free(includes.array);
+    free(libs.array);
+    free(compileOptions.array);
+    free(linkOptions.array);
     free(programFilename.array);
     free(exec.array);
     wprintf(L"[%S] Terminé %s\n", PROGRAM_NAME, (programStatus != 0 ? L"avec une erreur..." : L"avec succès !"));
