@@ -4,9 +4,6 @@
 const char *VERSION      = "1.0.0";
 const char *PROGRAM_NAME = "Cake";
 
-DWORD programFilenameLength = 0UL;
-char *programFilename       = NULL;
-
 char programStatus = 0;
 
 HANDLE stdoutRead, stdoutWrite;
@@ -36,3 +33,6 @@ long linkOptionsLength     = 0UL;
 unsigned char *linkOptions = NULL;
 
 Array_Char exec;
+
+Array_Char programFilename;
+Array_Char pwd;

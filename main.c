@@ -13,6 +13,7 @@
 #define MODE_RESET 2
 #define MODE_LINK  3
 #define MODE_CLEAN 4
+#define MODE_TEST  5
 
 int main(int argc, char **argv) {
     HWND consoleWnd = GetConsoleWindow();
@@ -38,6 +39,8 @@ int main(int argc, char **argv) {
             mode = MODE_LINK;
         else if(strcmp(argv[1], "clean") == 0)
             mode = MODE_CLEAN;
+        else if(strcmp(argv[1], "test") == 0)
+            mode = MODE_TEST;
         else if(strcmp(argv[1], "--help") == 0) {
             wprintf(
                 L"==========%S==========\n"
@@ -65,7 +68,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    programFilenameLength = get_program_file_name(&programFilename);
+    programFilename.length = get_program_file_name(&programFilename.array);
+    pwd.length = get_current_process_location(&pwd.array);
 
     FILE *pFile = fopen("Cakefile", "rb");
     if(!pFile) {
@@ -222,10 +226,13 @@ int main(int argc, char **argv) {
     Array_Char **listO = NULL;
     unsigned long listOsize = 0UL;
 
-    if(mode == MODE_ALL || mode == MODE_RESET || mode == MODE_LINK)
+    if(mode == MODE_ALL || mode == MODE_RESET || mode == MODE_LINK || mode == MODE_TEST)
         if(dirCout.array)
             listOsize = list_o_files(&listO, &dirCout);
+
     
+    unsigned long i;
+
     // Listing des fichiers C et H
     if(mode == MODE_ALL || mode == MODE_RESET) {
         if(dirCout.array) {
@@ -234,6 +241,8 @@ int main(int argc, char **argv) {
             free(dirCerr.array);
             dirCout.array = NULL;
             dirCerr.array = NULL;
+            for(i = 0UL; i < listCsize; i++)
+                relative_path(listC[i]);
         }
         dirC[13] = 'h';
         if((result = execute_command(dirC, &dirHout, &dirHerr)) != 0) {
@@ -252,6 +261,8 @@ int main(int argc, char **argv) {
             free(dirHerr.array);
             dirHout.array = NULL;
             dirHerr.array = NULL;
+            for(i = 0UL; i < listHsize; i++)
+                relative_path(listH[i]);
         }
     }
     
@@ -272,7 +283,7 @@ int main(int argc, char **argv) {
 
     unsigned long compileNumber = 0UL;
     unsigned long long startTime = get_current_time_millis();
-    
+
     if(mode == MODE_ALL || mode == MODE_RESET) {
         if(needCompileNumber > 0) {
             wprintf(L"==========Compilation==========\n");
@@ -369,6 +380,8 @@ pre_end1:
         free_list(&listC, listCsize);
     if(listH)
         free_list(&listH, listHsize);
+    if(listO)
+        free_list(&listO, listOsize);
 close_handles:
     CloseHandle(stdoutRead);
     CloseHandle(stdoutWrite);
@@ -383,7 +396,7 @@ program_end:
     free(libs);
     free(compileOptions);
     free(linkOptions);
-    free(programFilename);
+    free(programFilename.array);
     free(exec.array);
     wprintf(L"[%S] Terminé %s\n", PROGRAM_NAME, (programStatus != 0 ? L"avec une erreur..." : L"avec succès !"));
     return (programStatus != 0 ? EXIT_FAILURE : EXIT_SUCCESS);

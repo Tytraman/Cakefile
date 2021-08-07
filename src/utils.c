@@ -227,7 +227,7 @@ unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles) {
     free(oFiles.array);
     void *ptr;
     unsigned long ptrIndex;
-    unsigned long length = programFilenameLength;
+    unsigned long length = pwd.length;
 
     unsigned char *objSlash = malloc(objDirLength + 1);
     memcpy(objSlash, objDir, objDirLength);
@@ -242,13 +242,23 @@ unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles) {
             (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
             (*dest)[i]->array[(*dest)[i]->length] = '\0';
         }else {
-            move_allocate((void **) &(*dest)[i]->array, &(*dest)[i]->array[get_last_backslash(&programFilename[programFilenameLength - 1], programFilenameLength)], objSlash, objDirLength + 1, 1, &(*dest)[i]->length);
+            move_allocate((void **) &(*dest)[i]->array, &(*dest)[i]->array[get_last_backslash(&pwd.array[pwd.length - 1], pwd.length)], objSlash, objDirLength + 1, 1, &(*dest)[i]->length);
             (*dest)[i]->array = realloc((*dest)[i]->array, (*dest)[i]->length + 1);
             (*dest)[i]->array[(*dest)[i]->length] = '\0';
         }
     }
     free(objSlash);
+    for(i = 0UL; i < size; i++)
+        relative_path((*dest)[i]);
     return size;
+}
+
+void relative_path(Array_Char *path) {
+    if(search_data(path->array, pwd.array, 0UL, get_last_backslash(&path->array[path->length - 1], path->length), pwd.length)) {
+        rem_allocate((void **) &path->array, path->array, pwd.length, 1, &path->length);
+        path->array = realloc(path->array, path->length + 1);
+        path->array[path->length] = '\0';
+    }
 }
 
 int mkdirs(char *path) {
@@ -340,6 +350,16 @@ DWORD get_program_file_name(char **buffer) {
     return length;
 }
 
+DWORD get_current_process_location(char **buffer) {
+    char temp[0b1111111111111111];
+    DWORD length = GetCurrentDirectoryA(0b1111111111111111, temp) + 1;
+    *buffer = malloc(length + 1);
+    memcpy(*buffer, temp, length);
+    (*buffer)[length - 1] = '\\';
+    (*buffer)[length] = '\0';
+    return length;
+}
+
 unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength) {
     while(filenameLength >= 0) {
         if(*filenameEnd == '\\') return filenameLength;
@@ -413,3 +433,5 @@ unsigned long check_who_must_compile(unsigned long **list, Array_Char **listO, A
     }
     return number;
 }
+
+

@@ -71,6 +71,8 @@ void free_list(Array_Char ***list, unsigned long size);
 
 unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles);
 
+void relative_path(Array_Char *path);
+
 /*
     Crée les dossiers si non existants.
 
@@ -119,6 +121,8 @@ void *search_data(void *src, void *researching, unsigned long fromIndex, unsigne
     Retourne la longueur totale.
 */
 DWORD get_program_file_name(char **buffer);
+
+DWORD get_current_process_location(char **buffer);
 
 unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength);
 

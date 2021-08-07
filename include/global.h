@@ -18,8 +18,8 @@
 extern const char *VERSION;
 extern const char *PROGRAM_NAME;
 
-extern DWORD programFilenameLength;
-extern char *programFilename;
+extern Array_Char programFilename;
+extern Array_Char pwd;
 
 extern char programStatus;
 
