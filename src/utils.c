@@ -379,3 +379,37 @@ unsigned long long get_current_time_millis() {
     GetSystemTimeAsFileTime(&ft);
     return filetime_to_ularge(&ft) / 10000ULL;
 }
+
+unsigned long check_who_must_compile(unsigned long **list, Array_Char **listO, Array_Char **listC, unsigned long listOsize) {
+    unsigned long number = 0UL;
+    unsigned long i;
+    FILETIME lastModifiedO, lastModifiedC;
+    HANDLE hFileO, hFileC;
+    for(i = 0UL; i < listOsize; i++) {
+        if(GetFileAttributesA(listO[i]->array) == 0xffffffff) {
+            *list = realloc(*list, (number + 1) * sizeof(unsigned long));
+            (*list)[number++] = i;
+        }else {
+            if((hFileO = CreateFileA(listO[i]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                if((hFileC = CreateFileA(listC[i]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                    GetFileTime(hFileO, NULL, NULL, &lastModifiedO);
+                    GetFileTime(hFileC, NULL, NULL, &lastModifiedC);
+                    if(CompareFileTime(&lastModifiedO, &lastModifiedC) != 0) {
+                        CloseHandle(hFileO);
+                        CloseHandle(hFileC);
+                        *list = realloc(*list, (number + 1) * sizeof(unsigned long));
+                        (*list)[number++] = i;
+                    }else {
+                        CloseHandle(hFileO);
+                        CloseHandle(hFileC);
+                    }
+                }else {
+                    CloseHandle(hFileO);
+                    error_open_file(listC[i]->array);
+                }
+            }else
+                error_open_file(listO[i]->array);
+        }
+    }
+    return number;
+}

@@ -137,4 +137,6 @@ unsigned long long filetime_diff(FILETIME *ft1, FILETIME *ft2);
 
 unsigned long long get_current_time_millis();
 
+unsigned long check_who_must_compile(unsigned long **list, Array_Char **listO, Array_Char **listC, unsigned long listOsize);
+
 #endif

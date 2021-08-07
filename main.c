@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <windows.h>
 #include <stdint.h>
+#include <wchar.h>
 
 #include "include/utils.h"
 #include "include/global.h"
@@ -266,64 +267,41 @@ int main(int argc, char **argv) {
             if(result == 2) error_create_folder(binDir);
 
 
-    unsigned long long startTime = get_current_time_millis();
-    unsigned long compileNumber = 0UL;
+    unsigned long *needCompile = NULL;
+    unsigned long needCompileNumber = check_who_must_compile(&needCompile, listO, listC, listOsize);
 
+    unsigned long compileNumber = 0UL;
+    unsigned long long startTime = get_current_time_millis();
+    
     if(mode == MODE_ALL || mode == MODE_RESET) {
-        wprintf(L"==========Compilation==========\n");
-        unsigned long i;
-        FILETIME lastModifiedO, lastModifiedC;
-        HANDLE hFileO, hFileC;
-        for(i = 0UL; i < listOsize; i++) {
-            if(GetFileAttributesA(listO[i]->array) == 0xffffffff) {
-                if(create_object(listC[i], listO[i]) == 0) {
-                    compileNumber++;
-                    if((hFileO = CreateFileA(listO[i]->array, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
-                        if((hFileC = CreateFileA(listC[i]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
-                            GetFileTime(hFileC, NULL, NULL, &lastModifiedC);
-                            if(!SetFileTime(hFileO, NULL, NULL, &lastModifiedC))
-                                error_set_time(listO[i]->array);
-                            CloseHandle(hFileC);
-                        }
-                        CloseHandle(hFileO);
-                    }else
-                        error_open_file(listO[i]->array);
-                }
-            }else {
-                if((hFileO = CreateFileA(listO[i]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
-                    if((hFileC = CreateFileA(listC[i]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
-                        GetFileTime(hFileO, NULL, NULL, &lastModifiedO);
-                        GetFileTime(hFileC, NULL, NULL, &lastModifiedC);
-                        if(CompareFileTime(&lastModifiedO, &lastModifiedC) != 0) {
+        if(needCompileNumber > 0) {
+            wprintf(L"==========Compilation==========\n");
+            unsigned long currentCompile;
+            for(currentCompile = 0UL; currentCompile < needCompileNumber; currentCompile++) {
+                if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]]) == 0) {
+                    HANDLE hFileC, hFileO;
+                    if((hFileC = CreateFileA(listC[needCompile[currentCompile]]->array, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                        if((hFileO = CreateFileA(listO[needCompile[currentCompile]]->array, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                            FILETIME timeC;
+                            GetFileTime(hFileC, NULL, NULL, &timeC);
+                            if(!SetFileTime(hFileO, NULL, NULL, &timeC))
+                                error_set_time(listO[needCompile[currentCompile]]->array);
                             CloseHandle(hFileO);
                             CloseHandle(hFileC);
-                            if(create_object(listC[i], listO[i]) == 0) {
-                                compileNumber++;
-                                if((hFileO = CreateFileA(listO[i]->array, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
-                                    SetFileTime(hFileO, NULL, NULL, &lastModifiedC);
-                                    CloseHandle(hFileO);
-                                }else
-                                    error_open_file(listO[i]->array);
-                            }
-                        }else {
-                            CloseHandle(hFileO);
+                        }else
                             CloseHandle(hFileC);
-                        }
-                    }else {
-                        CloseHandle(hFileO);
-                        error_open_file(listC[i]->array);
                     }
-                }else
-                    error_open_file(listO[i]->array);
+                    compileNumber++;
+                }
             }
+            wprintf(L"===============================\n\n\n");
         }
-        wprintf(L"===============================\n\n\n");
     }
 
 
     // On link tous les objets ensemble :
     if(mode == MODE_ALL || mode == MODE_RESET || mode == MODE_LINK) {
-        if(compileNumber > 0) {
+        if(GetFileAttributesA(exec.array) == 0xffffffff || (compileNumber > 0 && compileNumber == needCompileNumber)) {
             wprintf(L"==========Link==========\n");
             unsigned long linkCommandSize = 15UL + exec.length + linkOptionsLength;
         
@@ -364,6 +342,8 @@ int main(int argc, char **argv) {
         }
     }
 
+    free(needCompile);
+
     unsigned long long endTime = get_current_time_millis();
     wprintf(L"==========Stats==========\n");
     switch(mode) {
@@ -373,7 +353,7 @@ int main(int argc, char **argv) {
         case MODE_ALL:
         case MODE_RESET:
             if(compileNumber > 0)
-                wprintf(L"Fichiers compilés : %lu\nCompilés et linkés en %llu ms.\n", compileNumber, endTime - startTime);
+                wprintf(L"Fichiers compilés : %lu / %lu\nCompilés et linkés en %llu ms.\n", compileNumber, needCompileNumber, endTime - startTime);
             else
                 wprintf(L"Rien n'a changé...\n");
             break;
