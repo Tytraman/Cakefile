@@ -146,4 +146,6 @@ unsigned long str_replace_c(char *str, unsigned long strSize, char toReplace, ch
 
 void check_includes(Array_Char *fileC, Array_Char *fileO, unsigned long **list, unsigned long *listSize, unsigned long current);
 
+void get_path(Array_Char *dest, Array_Char *filename);
+
 #endif

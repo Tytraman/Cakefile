@@ -47,6 +47,7 @@ extern Array_Char libs;
 
 extern Array_Char compileOptions;
 extern Array_Char linkOptions;
+extern Array_Char linkLibs;
 
 extern Array_Char exec;
 

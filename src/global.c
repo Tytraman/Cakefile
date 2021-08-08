@@ -23,5 +23,6 @@ Array_Char libs;
 
 Array_Char compileOptions;
 Array_Char linkOptions;
+Array_Char linkLibs;
 
 Array_Char exec;

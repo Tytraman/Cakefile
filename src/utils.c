@@ -111,14 +111,13 @@ char execute_command(char *command, Array_Char *out, Array_Char *err) {
         err->length = 0UL;
     }
     
-    STARTUPINFOA si = { 0 };
-    si.cb = sizeof(si);
+    STARTUPINFOA si = { sizeof(si) };
     si.dwFlags = STARTF_USESTDHANDLES;
     si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
     si.hStdOutput = stdoutWrite;
     si.hStdError = stderrWrite;
 
-    PROCESS_INFORMATION pi = { 0 };
+    PROCESS_INFORMATION pi;
     if(!CreateProcessA(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) return 1;
     WaitForSingleObject(pi.hProcess, INFINITE);
     CloseHandle(pi.hProcess);
@@ -364,10 +363,10 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
 char create_object(Array_Char *cFile, Array_Char *oFile) {
     char *command = NULL;
     unsigned long commandSize = 0UL;
-    commandSize = 19 + cFile->length + oFile->length + compileOptions.length;
+    commandSize = 15 + cFile->length + oFile->length + compileOptions.length + includes.length + libs.length;
     command = malloc(commandSize + 1);
-    sprintf(command, "cmd /C gcc -c %s -o %s %s", cFile->array, oFile->array, compileOptions.array);
-    wprintf(L"%S\n", &command[7]);
+    sprintf(command, "gcc -c %s -o %s %s %s %s", cFile->array, oFile->array, compileOptions.array, includes.array, libs.array);
+    wprintf(L"%S\n", command);
     char result;
     if((result = execute_command(command, NULL, NULL)) != 0)
         if(result == 1)
@@ -534,4 +533,16 @@ void check_includes(Array_Char *fileC, Array_Char *fileO, unsigned long **list, 
     free(listI);
     free(fileBuffer);
     fclose(pFile);
+}
+
+void get_path(Array_Char *dest, Array_Char *filename) {
+    dest->array = NULL;
+    dest->length = 0UL;
+    unsigned long lastBackslash = get_last_backslash(&filename->array[filename->length - 1], filename->length);
+    if(lastBackslash > 0) {
+        dest->length = lastBackslash;
+        dest->array = malloc(lastBackslash + 1);
+        memcpy(dest->array, filename->array, lastBackslash);
+        dest->array[lastBackslash] = '\0';
+    }
 }

@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <windows.h>
 #include <stdint.h>
-#include <wchar.h>
 
 #include "include/utils.h"
 #include "include/global.h"
@@ -14,10 +13,10 @@
 #define MODE_RESET 2
 #define MODE_LINK  3
 #define MODE_CLEAN 4
-#define MODE_TEST  5
+
+//TODO le nombre d'objets compilés ne doit pas augmenter quand il y a une erreur de compilation
 
 int main(int argc, char **argv) {
-
     // On vérifie que le programme est exécuté via un terminal, et pas en double cliquant dessus
     HWND consoleWnd = GetConsoleWindow();
     DWORD processID;
@@ -44,8 +43,6 @@ int main(int argc, char **argv) {
             mode = MODE_LINK;
         else if(strcmp(argv[1], "clean") == 0)
             mode = MODE_CLEAN;
-        else if(strcmp(argv[1], "test") == 0)
-            mode = MODE_TEST;
         else if(strcmp(argv[1], "--help") == 0) {
             wprintf(
                 L"==========%S==========\n"
@@ -59,10 +56,14 @@ int main(int argc, char **argv) {
                 L"- bin_dir : dossier dans lequel le fichier exécutable prendra ses aises.\n\n"
                 L"[ Optionnelles ]\n"
                 L"- exec_name : nom du fichier exécutable final (par défaut : prog.exe)\n"
-                L"- includes : Liste des dossiers includes externes à inclure.\n"
-                L"- libs : Liste des dossiers de librairies externes à inclure.\n"
+                L"- includes : liste des dossiers includes externes à inclure.\n"
+                L"- libs : liste des dossiers de librairies externes à inclure.\n"
                 L"- compile_options : options utilisées pendant la compilation.\n"
                 L"- link_options : options utilisées pendant le link des fichiers objets.\n"
+                L"- link_l : librairies externes à inclure.\n\n"
+                L"[ Bugs connus ]\n"
+                L"> Lorsque `compile_options` contient les valeurs \"-fdata-sections\" et \"-ffunction-sections\", il faut aussi ajouter \"-Os\", \"-s\" et \"-flto\", "
+                L"et ajouter dans `link_options` \"-Wl,--gc-sections\" et \"-flto\" sinon le programme se bloque au moment du link.\n"
                 L"========================\n"
                 , PROGRAM_NAME
             );
@@ -101,13 +102,29 @@ int main(int argc, char **argv) {
 
     // Récupération des paramètres :
 
-    srcDir.array         = NULL;
-    objDir.array         = NULL;
-    binDir.array         = NULL;
-    includes.array       = NULL;
-    libs.array           = NULL;
-    compileOptions.array = NULL;
-    linkOptions.array    = NULL;
+    srcDir.array  = NULL;
+    srcDir.length = 0UL;
+
+    objDir.array  = NULL;
+    objDir.length = 0UL;
+
+    binDir.array  = NULL;
+    binDir.length = 0UL;
+
+    includes.array  = NULL;
+    includes.length = 0UL;
+
+    libs.array  = NULL;
+    libs.length = 0UL;
+
+    compileOptions.array  = NULL;
+    compileOptions.length = 0UL;
+
+    linkOptions.array  = NULL;
+    linkOptions.length = 0UL;
+
+    linkLibs.array  = NULL;
+    linkLibs.length = 0UL;
 
     unsigned char *temp;
 
@@ -119,6 +136,7 @@ int main(int argc, char **argv) {
     char key6[] = "libs";
     char key7[] = "compile_options";
     char key8[] = "link_options";
+    char key9[] = "link_l";
 
     if((temp = get_key_value(key1, fileBuffer, fileSize, &srcDir.length)))
         copy_value(&srcDir.array, temp, srcDir.length);
@@ -169,6 +187,11 @@ int main(int argc, char **argv) {
         copy_value(&linkOptions.array, temp, linkOptions.length);
     else
         empty_str(&linkOptions.array);
+
+    if((temp = get_key_value(key9, fileBuffer, fileSize, &linkLibs.length)))
+        copy_value(&linkLibs.array, temp, linkLibs.length);
+    else
+        empty_str(&linkLibs.array);
 
     stdoutParent = GetStdHandle(STD_OUTPUT_HANDLE);
     stderrParent = GetStdHandle(STD_ERROR_HANDLE);
@@ -301,6 +324,13 @@ reset:
             if((result = mkdirs(objDir.array)) != 0)
                 if(result == 2) error_create_folder(objDir.array);
             needCompileNumber = check_who_must_compile(&needCompile, listO, listC, listOsize);
+            for(i = 0UL; i < needCompileNumber; i++) {
+                Array_Char objPath;
+                get_path(&objPath, listO[needCompile[i]]);
+                if((result = mkdirs(objPath.array)) != 0)
+                    if(result == 2) error_create_folder(objPath.array);
+                free(objPath.array);
+            }
             startTime = get_current_time_millis();
             if(needCompileNumber > 0) {
                 wprintf(L"==========Compilation==========\n");
@@ -317,18 +347,20 @@ reset:
                 if(result == 2) error_create_folder(binDir.array);
             if(mode == MODE_LINK || GetFileAttributesA(exec.array) == 0xffffffff || (compileNumber > 0 && compileNumber == needCompileNumber)) {
                 wprintf(L"==========Link==========\n");
-                unsigned long linkCommandSize = 15UL + exec.length + linkOptions.length;
-            
+                unsigned long linkCommandSize = 11UL + exec.length + linkOptions.length + includes.length + libs.length + linkLibs.length;
                 char *linkCommand = NULL;
-                unsigned long i, j = 11UL;
+                unsigned long i, j = 4UL;
                 for(i = 0UL; i < listOsize; i++)
                     linkCommandSize += listO[i]->length + 1;
 
                 linkCommand = malloc(linkCommandSize + 1);
-                char cmdGcc[] = { 'c', 'm', 'd', ' ', '/', 'C', ' ', 'g', 'c', 'c', ' ' };
+                char cmdGcc[] = { 'g', 'c', 'c', ' ' };
                 char space = ' ';
                 char output[] = { '-', 'o', ' ' };
-                memcpy(linkCommand, cmdGcc, 11);
+                memcpy(linkCommand, cmdGcc, 4);
+                memcpy(&linkCommand[j], linkOptions.array, linkOptions.length);
+                j += linkOptions.length;
+                linkCommand[j++] = space;
 
                 for(i = 0UL; i < listOsize; i++) {
                     memcpy(&linkCommand[j], listO[i]->array, listO[i]->length);
@@ -340,12 +372,18 @@ reset:
                 j += 3;
                 memcpy(&linkCommand[j], exec.array, exec.length);
                 j += exec.length;
-                memcpy(&linkCommand[j++], &space, 1);
+                linkCommand[j++] = space;
+                memcpy(&linkCommand[j], includes.array, includes.length);
+                j += includes.length;
+                linkCommand[j++] = space;
+                memcpy(&linkCommand[j], libs.array, libs.length);
+                j += libs.length;
+                linkCommand[j++] = space;
+                memcpy(&linkCommand[j], linkLibs.array, linkLibs.length);
 
-                memcpy(&linkCommand[j], linkOptions.array, linkOptions.length);
                 linkCommand[linkCommandSize] = '\0';
 
-                wprintf(L"%S\n", &linkCommand[7]);
+                wprintf(L"%S\n", linkCommand);
                 char linkResult;
                 if((linkResult = execute_command(linkCommand, NULL, NULL)) != 0) {
                     if(linkResult == 1)
