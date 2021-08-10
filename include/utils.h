@@ -48,7 +48,7 @@ long get_file_size(FILE *file);
     Si la clé n'est pas trouvée ou qu'il y a un problème pour trouver la valeur,
     NULL est retourné.
 */
-unsigned char *get_key_value(const char *key, unsigned char *fileBuffer, long fileSize, long *valueSize);
+unsigned char *get_key_value(const char *key, unsigned char *fileBuffer, long fileSize, unsigned long *valueSize);
 
 // Copie la valeur d'une clé récupérée grâce à get_key_value().
 void copy_value(char **buffer, unsigned char *src, long valueSize);

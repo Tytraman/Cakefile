@@ -158,7 +158,7 @@ int main(int argc, char **argv) {
         goto program_end;
     }
 
-    long execNameLength;
+    unsigned long execNameLength;
     char *execName = NULL;
     if((temp = get_key_value(key4, fileBuffer, fileSize, &execNameLength)))
         copy_value(&execName, temp, execNameLength);

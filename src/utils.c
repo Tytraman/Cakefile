@@ -44,7 +44,7 @@ long get_file_size(FILE *file) {
     return size;
 }
 
-unsigned char *get_key_value(const char *key, unsigned char *fileBuffer, long fileSize, long *valueSize) {
+unsigned char *get_key_value(const char *key, unsigned char *fileBuffer, long fileSize, unsigned long *valueSize) {
     *valueSize = 0L;
     unsigned char *found = NULL;
     long i, j, keyLength = strlen(key);
@@ -229,7 +229,6 @@ unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles) {
     free(oFiles.array);
     void *ptr;
     unsigned long ptrIndex;
-    unsigned long length = pwd.length;
 
     unsigned char *objSlash = malloc(objDir.length + 1);
     memcpy(objSlash, objDir.array, objDir.length);
