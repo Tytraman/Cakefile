@@ -59,11 +59,13 @@ void empty_str(char **str);
 /*
     Exécute la commande et stock le résultat dans`out` ou `err`.
 
+    `error` si non NULL, contiendra 0 si le flux d'erreur est vide, sinon elle contiendra 1.
+
     Retourne 0 en cas de succès, sinon :
     - 1 quand le process n'a pas pu être créé,
     - 2 quand les données n'ont pas pu être lues.
 */
-char execute_command(char *command, Array_Char *out, Array_Char *err);
+char execute_command(char *command, Array_Char *out, Array_Char *err, char *error);
 
 // Fait une liste des fichiers de la commande `dir` pour pouvoir les énumérer.
 unsigned long list_files(Array_Char ***dest, Array_Char *files);
@@ -72,6 +74,7 @@ void free_list(Array_Char ***list, unsigned long size);
 
 unsigned long list_o_files(Array_Char ***dest, Array_Char *cFiles);
 
+// Retire la partie absolue d'un chemin d'accès, ça ne converti pas un chemin, c'est uniquement de la suppression.
 void relative_path(Array_Char *path);
 
 /*
@@ -127,11 +130,13 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
 /*
     Crée un fichier o grâce à un fichier c.
 
+    `error` contiendra 0 si l'objet a été créé sinon 1.
+
     Retourne 0 en cas de succès, sinon :
     - 1 quand le process n'a pas pu être créé,
     - 2 quand les données n'ont pas pu être lues.
 */
-char create_object(Array_Char *cFile, Array_Char *oFile);
+char create_object(Array_Char *cFile, Array_Char *oFile, char *error);
 
 unsigned long long filetime_to_ularge(FILETIME *ft);
 

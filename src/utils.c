@@ -101,7 +101,7 @@ void empty_str(char **str) {
     (*str)[0] = '\0';
 }
 
-char execute_command(char *command, Array_Char *out, Array_Char *err) {
+char execute_command(char *command, Array_Char *out, Array_Char *err, char *error) {
     if(out) {
         out->array  = NULL;
         out->length = 0UL;
@@ -110,6 +110,7 @@ char execute_command(char *command, Array_Char *out, Array_Char *err) {
         err->array  = NULL;
         err->length = 0UL;
     }
+    if(error) *error = 0;
     
     STARTUPINFOA si = { sizeof(si) };
     si.dwFlags = STARTF_USESTDHANDLES;
@@ -155,6 +156,7 @@ char execute_command(char *command, Array_Char *out, Array_Char *err) {
 
     // Lecture et copie de stderr
     if(stderrReadSize > 0UL) {
+        if(error) *error = 1;
         if(err) {
             while(1) {
                 if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
@@ -360,7 +362,7 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
     return filenameLength;
 }
 
-char create_object(Array_Char *cFile, Array_Char *oFile) {
+char create_object(Array_Char *cFile, Array_Char *oFile, char *error) {
     char *command = NULL;
     unsigned long commandSize = 0UL;
     commandSize = 15 + cFile->length + oFile->length + compileOptions.length + includes.length + libs.length;
@@ -368,7 +370,7 @@ char create_object(Array_Char *cFile, Array_Char *oFile) {
     sprintf(command, "gcc -c %s -o %s %s %s %s", cFile->array, oFile->array, compileOptions.array, includes.array, libs.array);
     wprintf(L"%S\n", command);
     char result;
-    if((result = execute_command(command, NULL, NULL)) != 0)
+    if((result = execute_command(command, NULL, NULL, error)) != 0)
         if(result == 1)
             error_create_process(command);
     free(command);

@@ -14,7 +14,6 @@
 #define MODE_LINK  3
 #define MODE_CLEAN 4
 
-//TODO le nombre d'objets compilés ne doit pas augmenter quand il y a une erreur de compilation
 
 int main(int argc, char **argv) {
     // On vérifie que le programme est exécuté via un terminal, et pas en double cliquant dessus
@@ -229,7 +228,7 @@ int main(int argc, char **argv) {
 
     char dirC[] = "cmd /C dir *.c /b/s";
     char result;
-    if((result = execute_command(dirC, &dirCout, &dirCerr)) != 0) {
+    if((result = execute_command(dirC, &dirCout, &dirCerr, NULL)) != 0) {
         if(result == 1)
             error_create_process(dirC);
         else {
@@ -275,6 +274,8 @@ int main(int argc, char **argv) {
     unsigned long compileNumber = 0UL;
     unsigned long long startTime;
 
+    char isLink = 0;
+
     unsigned long cleanCommandSize = 25 + objDir.length * 2;
     char *cleanCommand = malloc(cleanCommandSize + 1);
     sprintf(cleanCommand, "cmd /C if exist %s rd /q/s %s", objDir.array, objDir.array);
@@ -283,7 +284,7 @@ int main(int argc, char **argv) {
         case MODE_CLEAN:
 clean:
             wprintf(L"Nettoyage...\n");
-            if((result = execute_command(cleanCommand, NULL, NULL)) != 0) {
+            if((result = execute_command(cleanCommand, NULL, NULL, NULL)) != 0) {
                 if(result == 1) {
                     error_create_process(cleanCommand);
                     goto pre_end1;
@@ -304,7 +305,7 @@ reset:
                 dirCerr.array = NULL;
             }
             dirC[13] = 'h';
-            if((result = execute_command(dirC, &dirHout, &dirHerr)) != 0) {
+            if((result = execute_command(dirC, &dirHout, &dirHerr, NULL)) != 0) {
                 if(result == 1)
                     error_create_process(dirC);
                 else {
@@ -335,8 +336,9 @@ reset:
             if(needCompileNumber > 0) {
                 wprintf(L"==========Compilation==========\n");
                 unsigned long currentCompile;
+                char compileError;
                 for(currentCompile = 0UL; currentCompile < needCompileNumber; currentCompile++) {
-                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]]) == 0)
+                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]], &compileError) == 0 && compileError == 0)
                         compileNumber++;
                 }
                 wprintf(L"===============================\n\n\n");
@@ -345,8 +347,10 @@ reset:
             if(mode == MODE_LINK) startTime = get_current_time_millis();
             if((result = mkdirs(binDir.array)) != 0)
                 if(result == 2) error_create_folder(binDir.array);
-            if(mode == MODE_LINK || GetFileAttributesA(exec.array) == 0xffffffff || (compileNumber > 0 && compileNumber == needCompileNumber)) {
+            if(mode == MODE_LINK || (compileNumber > 0 && compileNumber == needCompileNumber)) {
                 wprintf(L"==========Link==========\n");
+                str_replace(&includes, '/', '\\');
+                str_replace(&libs, '/', '\\');
                 unsigned long linkCommandSize = 11UL + exec.length + linkOptions.length + includes.length + libs.length + linkLibs.length;
                 char *linkCommand = NULL;
                 unsigned long i, j = 4UL;
@@ -384,11 +388,12 @@ reset:
                 linkCommand[linkCommandSize] = '\0';
 
                 wprintf(L"%S\n", linkCommand);
-                char linkResult;
-                if((linkResult = execute_command(linkCommand, NULL, NULL)) != 0) {
+                char linkResult, linkError;
+                if((linkResult = execute_command(linkCommand, NULL, NULL, &linkError)) != 0) {
                     if(linkResult == 1)
                         error_create_process(linkCommand);
-                }
+                }else
+                    isLink = 1;
                 free(linkCommand);
                 wprintf(L"========================\n\n\n");
             }
@@ -406,7 +411,11 @@ reset:
         case MODE_ALL:
         case MODE_RESET:
             if(compileNumber > 0)
-                wprintf(L"Fichiers compilés : %lu / %lu\nCompilés et linkés en %llu ms.\n", compileNumber, needCompileNumber, endTime - startTime);
+                wprintf(
+                    L"Fichiers compilés : %lu / %lu\n"
+                    L"Compilés%s en %llu ms.\n"
+                    , compileNumber, needCompileNumber, (isLink ? L" et linkés" : L""), endTime - startTime
+                );
             else
                 wprintf(L"Rien n'a changé...\n");
             break;
