@@ -65,7 +65,7 @@ void empty_str(char **str);
     - 1 quand le process n'a pas pu être créé,
     - 2 quand les données n'ont pas pu être lues.
 */
-char execute_command(char *command, Array_Char *out, Array_Char *err, char *error);
+char execute_command(char *command, Array_Char *out, Array_Char *err, BOOL inherit);
 
 // Fait une liste des fichiers de la commande `dir` pour pouvoir les énumérer.
 unsigned long list_files(Array_Char ***dest, Array_Char *files);
@@ -136,7 +136,7 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
     - 1 quand le process n'a pas pu être créé,
     - 2 quand les données n'ont pas pu être lues.
 */
-char create_object(Array_Char *cFile, Array_Char *oFile, char *error);
+char create_object(Array_Char *cFile, Array_Char *oFile);
 
 unsigned long long filetime_to_ularge(FILETIME *ft);
 

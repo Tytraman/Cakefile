@@ -1,7 +1,7 @@
 #include "../include/global.h"
 #include "../include/utils.h"
 
-const char *VERSION      = "1.0.0";
+const char *VERSION      = "1.0.1";
 const char *PROGRAM_NAME = "Cake";
 
 Array_Char programFilename;

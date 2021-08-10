@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <windows.h>
-#include <stdint.h>
 
 #include "include/utils.h"
 #include "include/global.h"
@@ -67,10 +66,7 @@ int main(int argc, char **argv) {
                 L"- libs : liste des dossiers de librairies externes à inclure.\n"
                 L"- compile_options : options utilisées pendant la compilation.\n"
                 L"- link_options : options utilisées pendant le link des fichiers objets.\n"
-                L"- link_l : librairies externes à inclure.\n\n"
-                L"[ Bugs connus ]\n"
-                L"> Lorsque `compile_options` contient les valeurs \"-fdata-sections\" et \"-ffunction-sections\", il faut aussi ajouter \"-Os\", \"-s\" et \"-flto\", "
-                L"et ajouter dans `link_options` \"-Wl,--gc-sections\" et \"-flto\" sinon le programme se bloque au moment du link.\n"
+                L"- link_l : librairies externes à inclure.\n"
                 L"========================\n"
                 , PROGRAM_NAME
             );
@@ -262,7 +258,7 @@ int main(int argc, char **argv) {
 
     char dirC[] = "cmd /C dir *.c /b/s";
     char result;
-    if((result = execute_command(dirC, &dirCout, &dirCerr, NULL)) != 0) {
+    if((result = execute_command(dirC, &dirCout, &dirCerr, TRUE)) != 0) {
         if(result == 1)
             error_create_process(dirC);
         else {
@@ -318,7 +314,7 @@ int main(int argc, char **argv) {
         case MODE_CLEAN:
 clean:
             wprintf(L"Nettoyage...\n");
-            if((result = execute_command(cleanCommand, NULL, NULL, NULL)) != 0) {
+            if((result = execute_command(cleanCommand, NULL, NULL, TRUE)) != 0) {
                 if(result == 1) {
                     error_create_process(cleanCommand);
                     goto pre_end1;
@@ -339,7 +335,7 @@ reset:
                 dirCerr.array = NULL;
             }
             dirC[13] = 'h';
-            if((result = execute_command(dirC, &dirHout, &dirHerr, NULL)) != 0) {
+            if((result = execute_command(dirC, &dirHout, &dirHerr, TRUE)) != 0) {
                 if(result == 1)
                     error_create_process(dirC);
                 else {
@@ -370,9 +366,8 @@ reset:
             if(needCompileNumber > 0) {
                 wprintf(L"==========Compilation==========\n");
                 unsigned long currentCompile;
-                char compileError;
                 for(currentCompile = 0UL; currentCompile < needCompileNumber; currentCompile++) {
-                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]], &compileError) == 0 && compileError == 0)
+                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]]) == 0)
                         compileNumber++;
                 }
                 wprintf(L"===============================\n\n\n");
@@ -422,8 +417,8 @@ reset:
                 linkCommand[linkCommandSize] = '\0';
 
                 wprintf(L"%S\n", linkCommand);
-                char linkResult, linkError;
-                if((linkResult = execute_command(linkCommand, NULL, NULL, &linkError)) != 0) {
+                char linkResult;
+                if((linkResult = execute_command(linkCommand, NULL, NULL, FALSE)) != 0) {
                     if(linkResult == 1)
                         error_create_process(linkCommand);
                 }else

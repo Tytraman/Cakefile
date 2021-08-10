@@ -101,7 +101,7 @@ void empty_str(char **str) {
     (*str)[0] = '\0';
 }
 
-char execute_command(char *command, Array_Char *out, Array_Char *err, char *error) {
+char execute_command(char *command, Array_Char *out, Array_Char *err, BOOL inherit) {
     if(out) {
         out->array  = NULL;
         out->length = 0UL;
@@ -110,72 +110,73 @@ char execute_command(char *command, Array_Char *out, Array_Char *err, char *erro
         err->array  = NULL;
         err->length = 0UL;
     }
-    if(error) *error = 0;
     
     STARTUPINFOA si = { sizeof(si) };
-    si.dwFlags = STARTF_USESTDHANDLES;
-    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-    si.hStdOutput = stdoutWrite;
-    si.hStdError = stderrWrite;
-
     PROCESS_INFORMATION pi;
-    if(!CreateProcessA(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) return 1;
+    if(inherit) {
+        si.dwFlags = STARTF_USESTDHANDLES;
+        si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+        si.hStdOutput = stdoutWrite;
+        si.hStdError = stderrWrite;
+    }
+    
+    if(!CreateProcessA(NULL, command, NULL, NULL, inherit, 0, NULL, NULL, &si, &pi)) return 1;
     WaitForSingleObject(pi.hProcess, INFINITE);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
 
-    DWORD stdoutReadSize = GetFileSize(stdoutRead, NULL);
-    DWORD stderrReadSize = GetFileSize(stderrRead, NULL);
+    if(inherit) {
+        DWORD stdoutReadSize = GetFileSize(stdoutRead, NULL);
+        DWORD stderrReadSize = GetFileSize(stderrRead, NULL);
 
-    DWORD read, totalRead = 0UL;
-    DWORD written;
-    char tempBuff[BUFF_SIZE];
+        DWORD read, totalRead = 0UL;
+        DWORD written;
+        char tempBuff[BUFF_SIZE];
 
-    // Lecture et copie de stdout
-    if(stdoutReadSize > 0UL) {
-        if(out) {
-            while(1) {
-                if(!ReadFile(stdoutRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-                totalRead += read;
-                add_allocate((void **) &out->array, tempBuff, read, 1, &out->length);
-                if(totalRead == stdoutReadSize) break;
+        // Lecture et copie de stdout
+        if(stdoutReadSize > 0UL) {
+            if(out) {
+                while(1) {
+                    if(!ReadFile(stdoutRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
+                    totalRead += read;
+                    add_allocate((void **) &out->array, tempBuff, read, 1, &out->length);
+                    if(totalRead == stdoutReadSize) break;
+                }
+                out->array = realloc(out->array, out->length + 1);
+                out->array[out->length] = '\0';
+            }else {
+                while(1) {
+                    if(!ReadFile(stdoutRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
+                    totalRead += read;
+                    WriteFile(stdoutParent, tempBuff, read, &written, NULL);
+                    if(totalRead == stdoutReadSize) break;
+                }
             }
-            out->array = realloc(out->array, out->length + 1);
-            out->array[out->length] = '\0';
-        }else {
-            while(1) {
-                if(!ReadFile(stdoutRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-                totalRead += read;
-                WriteFile(stdoutParent, tempBuff, read, &written, NULL);
-                if(totalRead == stdoutReadSize) break;
+        }
+        
+        totalRead = 0UL;
+
+        // Lecture et copie de stderr
+        if(stderrReadSize > 0UL) {
+            if(err) {
+                while(1) {
+                    if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
+                    totalRead += read;
+                    add_allocate((void **) &err->array, tempBuff, read, 1, &err->length);
+                    if(totalRead == stderrReadSize) break;
+                }
+                err->array = realloc(err->array, err->length + 1);
+                err->array[err->length] = '\0';
+            }else {
+                while(1) {
+                    if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
+                    totalRead += read;
+                    WriteFile(stderrParent, tempBuff, read, &written, NULL);
+                    if(totalRead == stderrReadSize) break;
+                }
             }
         }
     }
-    
-    totalRead = 0UL;
-
-    // Lecture et copie de stderr
-    if(stderrReadSize > 0UL) {
-        if(error) *error = 1;
-        if(err) {
-            while(1) {
-                if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-                totalRead += read;
-                add_allocate((void **) &err->array, tempBuff, read, 1, &err->length);
-                if(totalRead == stderrReadSize) break;
-            }
-            err->array = realloc(err->array, err->length + 1);
-            err->array[err->length] = '\0';
-        }else {
-            while(1) {
-                if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-                totalRead += read;
-                WriteFile(stderrParent, tempBuff, read, &written, NULL);
-                if(totalRead == stderrReadSize) break;
-            }
-        }
-    }
-
     return 0;
 }
 
@@ -361,7 +362,7 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
     return filenameLength;
 }
 
-char create_object(Array_Char *cFile, Array_Char *oFile, char *error) {
+char create_object(Array_Char *cFile, Array_Char *oFile) {
     char *command = NULL;
     unsigned long commandSize = 0UL;
     commandSize = 15 + cFile->length + oFile->length + compileOptions.length + includes.length + libs.length;
@@ -369,7 +370,7 @@ char create_object(Array_Char *cFile, Array_Char *oFile, char *error) {
     sprintf(command, "gcc -c %s -o %s %s %s %s", cFile->array, oFile->array, compileOptions.array, includes.array, libs.array);
     wprintf(L"%S\n", command);
     char result;
-    if((result = execute_command(command, NULL, NULL, error)) != 0)
+    if((result = execute_command(command, NULL, NULL, FALSE)) != 0)
         if(result == 1)
             error_create_process(command);
     free(command);
