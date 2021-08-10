@@ -45,6 +45,14 @@ int main(int argc, char **argv) {
         else if(strcmp(argv[1], "--help") == 0) {
             wprintf(
                 L"==========%S==========\n"
+                L"Lorsqu'aucun argument n'est passé, la commande est équivalente à `cake all`.\n\n"
+                L"[ Arguments ]\n"
+                L"> --help : affiche ce message.\n"
+                L"> --version : affiche la version installée du programme.\n"
+                L"> --generate : génère un fichier `Cakefile`.\n"
+                L"> all : compile uniquement les fichiers sources modifiés ou dépendants d'headers modifiés, puis les link.\n"
+                L"> reset : supprime tous les fichiers objets, l'exécutable et recompile tout, puis les link.\n"
+                L"> clean : supprime tous les fichiers objets et l'exécutable.\n\n"
                 L"Le compilateur utilisé est gcc, alors assure toi de l'avoir installé et d'avoir la variable d'environnement !\n"
                 L"Les options suivantes doivent être mises dans un fichier `Cakefile` (sans extension).\n"
                 L"Le format est clé : valeur\n\n"
@@ -70,6 +78,32 @@ int main(int argc, char **argv) {
         }else if(strcmp(argv[1], "--version") == 0) {
             wprintf(L"%S x%S version %S\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
             return EXIT_SUCCESS;
+        }else if(strcmp(argv[1], "--generate") == 0) {
+            char cakefile[] = "Cakefile";
+            if(GetFileAttributesA(cakefile) == 0xffffffff) {
+                unsigned char defaultCakefile[] =
+                    "src_dir : src\n"
+                    "obj_dir : obj\n"
+                    "bin_dir : bin\n\n"
+
+                    "exec_name : prog.exe\n\n"
+
+                    "includes : \n"
+                    "libs : \n\n"
+
+                    "compile_options : \n"
+                    "link_options : \n\n"
+
+                    "link_l : ";
+                FILE *pCakefile = fopen(cakefile, "wb");
+                fwrite(defaultCakefile, 1, 131, pCakefile);
+                fclose(pCakefile);
+            }else
+                wprintf(L"[%S] Il existe déjà un fichier `%S`.\n", PROGRAM_NAME, cakefile);
+            return EXIT_SUCCESS;
+        }else {
+            wprintf(L"[%S] Argument invalide, entre `cake --help` pour afficher l'aide.", PROGRAM_NAME);
+            return EXIT_FAILURE;
         }
     }
 
