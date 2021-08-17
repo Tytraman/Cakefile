@@ -18,8 +18,8 @@ void error_create_process(const char *command) {
     programStatus = PROGRAM_STATUS_ERROR_CREATE_PROCESS;
 }
 
-void error_create_pipe() {
-    wprintf(L"[%S] Erreur : Impossible de créer le tunnel de redirection du processus (%lu)\n", PROGRAM_NAME, GetLastError());
+void error_create_pipe(const char *command, const char *std) {
+    wprintf(L"[%S] Erreur : Impossible de créer le tunnel de redirection %S du processus (%lu) -> %S\n", PROGRAM_NAME, std, GetLastError(), command);
     programStatus = PROGRAM_STATUS_ERROR_CREATE_PIPE;
 }
 
@@ -38,4 +38,16 @@ void error_open_file(const char *filename) {
 
 void error_set_time(const char *filename) {
     wprintf(L"[%S] Erreur : Impossible de changer la date de modification du fichier (%lu) -> %S\n", PROGRAM_NAME, GetLastError(), filename);
+}
+
+void error_use_pipe(const char *command) {
+    wprintf(L"[%S] Erreur : Impossible d'utiliser les tunnels de redirections pour cette commande -> %S\n", PROGRAM_NAME, command);
+}
+
+void error_create_event(const char *command) {
+    wprintf(L"[%S] Erreur : Impossible de créer l'event (%lu) -> %S\n", PROGRAM_NAME, GetLastError(), command);
+}
+
+void error_create_std(const char *command, const char *std) {
+    wprintf(L"[%S] Erreur : Impossible de créer %S (%lu) -> %S\n", PROGRAM_NAME, std, GetLastError(), command);
 }

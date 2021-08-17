@@ -23,15 +23,15 @@
 extern const char *VERSION;
 extern const char *PROGRAM_NAME;
 
+extern const char *STDERR;
+extern const char *STDOUT;
+extern const char *STDIN;
+
 extern Array_Char programFilename;
 extern Array_Char pwd;
 
 extern char programStatus;
 
-// Stock les sorties des commandes.
-extern HANDLE stdoutRead, stdoutWrite;
-// Stock les erreurs des commandes.
-extern HANDLE stderrRead, stderrWrite;
 // Pointeur vers stdout (WINAPI).
 extern HANDLE stdoutParent;
 // Pointeur vers stderr (WINAPI).

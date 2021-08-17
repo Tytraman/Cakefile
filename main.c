@@ -226,31 +226,6 @@ int main(int argc, char **argv) {
     stderrParent = GetStdHandle(STD_ERROR_HANDLE);
 
 
-    // Création des tunnels de redirection :
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(sa);
-    sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle = TRUE;
-
-    if(!CreatePipe(&stdoutRead, &stdoutWrite, &sa, 0)) {
-        error_create_pipe(GetLastError());
-        goto program_end;
-    }
-    if(!CreatePipe(&stderrRead, &stderrWrite, &sa, 0)) {
-        error_create_pipe(GetLastError());
-        CloseHandle(stdoutRead);
-        CloseHandle(stdoutWrite);
-        goto program_end;
-    }
-    if(!SetHandleInformation(stdoutRead, HANDLE_FLAG_INHERIT, 0)) {
-        error_set_handle_infos(GetLastError());
-        goto close_handles;
-    }
-    if(!SetHandleInformation(stderrRead, HANDLE_FLAG_INHERIT, 0)) {
-        error_set_handle_infos(GetLastError());
-        goto close_handles;
-    }
-
     Array_Char dirCout, dirCerr;
     Array_Char dirHout, dirHerr;
     dirCout.array = NULL; dirCerr.array = NULL;
@@ -258,15 +233,9 @@ int main(int argc, char **argv) {
 
     char dirC[] = "cmd /C dir *.c /b/s";
     char result;
-    if((result = execute_command(dirC, &dirCout, &dirCerr, TRUE)) != 0) {
-        if(result == 1)
-            error_create_process(dirC);
-        else {
-            free(dirCout.array);
-            free(dirCerr.array);
-            dirCout.array = NULL;
-            dirCerr.array = NULL;
-        }
+    if((result = execute_command(dirC, &dirCout, &dirCerr, NULL)) != 0) {
+        execute_command_failed(dirC, result);
+        goto program_end;
     }
 
     /* Le nom de l'exe est nécessaire dans tous les modes */
@@ -314,11 +283,9 @@ int main(int argc, char **argv) {
         case MODE_CLEAN:
 clean:
             wprintf(L"Nettoyage...\n");
-            if((result = execute_command(cleanCommand, NULL, NULL, TRUE)) != 0) {
-                if(result == 1) {
-                    error_create_process(cleanCommand);
-                    goto pre_end1;
-                }
+            if((result = execute_command(cleanCommand, NULL, NULL, NULL)) != 0) {
+                execute_command_failed(cleanCommand, result);
+                goto pre_end1;
             }
             remove(exec.array);
             if(mode == MODE_RESET) goto reset;
@@ -333,24 +300,6 @@ reset:
                 free(dirCerr.array);
                 dirCout.array = NULL;
                 dirCerr.array = NULL;
-            }
-            dirC[13] = 'h';
-            if((result = execute_command(dirC, &dirHout, &dirHerr, TRUE)) != 0) {
-                if(result == 1)
-                    error_create_process(dirC);
-                else {
-                    free(dirHout.array);
-                    free(dirHerr.array);
-                    dirHout.array = NULL;
-                    dirHerr.array = NULL;
-                }
-            }
-            if(dirHout.array) {
-                listHsize = list_files(&listH, &dirHout);
-                free(dirHout.array);
-                free(dirHerr.array);
-                dirHout.array = NULL;
-                dirHerr.array = NULL;
             }
             if((result = mkdirs(objDir.array)) != 0)
                 if(result == 2) error_create_folder(objDir.array);
@@ -367,7 +316,8 @@ reset:
                 wprintf(L"==========Compilation==========\n");
                 unsigned long currentCompile;
                 for(currentCompile = 0UL; currentCompile < needCompileNumber; currentCompile++) {
-                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]]) == 0)
+                    char error;
+                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]], &error) == 0 && error == 0)
                         compileNumber++;
                 }
                 wprintf(L"===============================\n\n\n");
@@ -417,11 +367,10 @@ reset:
                 linkCommand[linkCommandSize] = '\0';
 
                 wprintf(L"%S\n", linkCommand);
-                char linkResult;
-                if((linkResult = execute_command(linkCommand, NULL, NULL, FALSE)) != 0) {
-                    if(linkResult == 1)
-                        error_create_process(linkCommand);
-                }else
+                char linkResult, error;
+                if((linkResult = execute_command(linkCommand, NULL, NULL, &error)) != 0) {
+                    execute_command_failed(linkCommand, result);
+                }else if(error == 0)
                     isLink = 1;
                 free(linkCommand);
                 wprintf(L"========================\n\n\n");
@@ -462,11 +411,6 @@ pre_end1:
         free_list(&listH, listHsize);
     if(listO)
         free_list(&listO, listOsize);
-close_handles:
-    CloseHandle(stdoutRead);
-    CloseHandle(stdoutWrite);
-    CloseHandle(stderrRead);
-    CloseHandle(stderrWrite);
 program_end:
     free(objDir.array);
     free(binDir.array);

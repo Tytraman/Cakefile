@@ -1,16 +1,18 @@
 #include "../include/global.h"
 #include "../include/utils.h"
 
-const char *VERSION      = "1.0.1";
+const char *VERSION      = "1.0.2";
 const char *PROGRAM_NAME = "Cake";
+
+const char *STDERR = "STDERR";
+const char *STDOUT = "STDOUT";
+const char *STDIN  = "STDIN";
 
 Array_Char programFilename;
 Array_Char pwd;
 
 char programStatus = 0;
 
-HANDLE stdoutRead, stdoutWrite;
-HANDLE stderrRead, stderrWrite;
 HANDLE stdoutParent;
 HANDLE stderrParent;
 

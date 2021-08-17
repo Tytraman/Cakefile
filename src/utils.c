@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <windows.h>
+#include <process.h>
 
 void rem_allocate(void **array, void *start, size_t elements, size_t byteSize, unsigned long *arraySize) {
     void *end = start + (elements * byteSize);
@@ -101,7 +102,122 @@ void empty_str(char **str) {
     (*str)[0] = '\0';
 }
 
-char execute_command(char *command, Array_Char *out, Array_Char *err, BOOL inherit) {
+char execute_command(char *command, Array_Char *out, Array_Char *err, char *error) {
+    if(error) *error = 0;
+    char pipeName[] = "\\\\.\\pipe\\cakefile_pipe";
+    HANDLE std[3] = { NULL, NULL, NULL };
+
+    std[0] = CreateNamedPipeA(
+        pipeName,
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+        PIPE_TYPE_BYTE     | PIPE_READMODE_BYTE | PIPE_WAIT,
+        3,
+        BUFF_SIZE,
+        BUFF_SIZE,
+        5000,
+        NULL
+    );
+    if(std[0] == INVALID_HANDLE_VALUE) return 1;
+
+    std[1] = CreateNamedPipeA(
+        pipeName,
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+        PIPE_TYPE_BYTE     | PIPE_READMODE_BYTE | PIPE_WAIT,
+        3,
+        BUFF_SIZE,
+        BUFF_SIZE,
+        5000,
+        NULL
+    );
+    if(std[1] == INVALID_HANDLE_VALUE) {
+        CloseHandle(std[0]);
+        return 2;
+    }
+
+    std[2] = CreateNamedPipeA(
+        pipeName,
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+        PIPE_TYPE_BYTE     | PIPE_READMODE_BYTE | PIPE_WAIT,
+        3,
+        BUFF_SIZE,
+        BUFF_SIZE,
+        5000,
+        NULL
+    );
+    if(std[2] == INVALID_HANDLE_VALUE) {
+        CloseHandle(std[0]);
+        CloseHandle(std[1]);
+        return 3;
+    }
+
+    HANDLE hEvent = CreateEventA(NULL, TRUE, FALSE, NULL);
+    if(hEvent == INVALID_HANDLE_VALUE) {
+        CloseHandle(std[0]);
+        CloseHandle(std[1]);
+        CloseHandle(std[2]);
+        return 4;
+    }
+
+    SECURITY_ATTRIBUTES sa = { sizeof(sa), 0, TRUE };
+    STARTUPINFOA si = { 0 };
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi = { 0 };
+
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdError = CreateFileA(
+        pipeName,
+        FILE_GENERIC_READ | FILE_GENERIC_WRITE,
+        FILE_SHARE_READ   | FILE_SHARE_WRITE,
+        &sa,
+        OPEN_EXISTING,
+        0,
+        NULL
+    );
+    if(si.hStdError == INVALID_HANDLE_VALUE) {
+        CloseHandle(std[0]);
+        CloseHandle(std[1]);
+        CloseHandle(std[2]);
+        CloseHandle(hEvent);
+        return 5;
+    }
+
+    si.hStdOutput = CreateFileA(
+        pipeName,
+        FILE_GENERIC_READ | FILE_GENERIC_WRITE,
+        FILE_SHARE_READ   | FILE_SHARE_WRITE,
+        &sa,
+        OPEN_EXISTING,
+        0,
+        NULL
+    );
+    if(si.hStdOutput == INVALID_HANDLE_VALUE) {
+        CloseHandle(si.hStdError);
+        CloseHandle(std[0]);
+        CloseHandle(std[1]);
+        CloseHandle(std[2]);
+        CloseHandle(hEvent);
+        return 6;
+    }
+
+    si.hStdInput = CreateFileA(
+        pipeName,
+        FILE_GENERIC_READ | FILE_GENERIC_WRITE,
+        FILE_SHARE_READ   | FILE_SHARE_WRITE,
+        &sa,
+        OPEN_EXISTING,
+        0,
+        NULL
+    );
+    if(si.hStdInput == INVALID_HANDLE_VALUE) {
+        CloseHandle(si.hStdError);
+        CloseHandle(si.hStdOutput);
+        CloseHandle(std[0]);
+        CloseHandle(std[1]);
+        CloseHandle(std[2]);
+        CloseHandle(hEvent);
+        return 7;
+    }
+
     if(out) {
         out->array  = NULL;
         out->length = 0UL;
@@ -110,73 +226,121 @@ char execute_command(char *command, Array_Char *out, Array_Char *err, BOOL inher
         err->array  = NULL;
         err->length = 0UL;
     }
-    
-    STARTUPINFOA si = { sizeof(si) };
-    PROCESS_INFORMATION pi;
-    if(inherit) {
-        si.dwFlags = STARTF_USESTDHANDLES;
-        si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-        si.hStdOutput = stdoutWrite;
-        si.hStdError = stderrWrite;
+
+    if(CreateProcessA(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        CloseHandle(si.hStdError);
+        CloseHandle(si.hStdOutput);
+        CloseHandle(si.hStdInput);
+    }else {
+        CloseHandle(hEvent);
+        CloseHandle(std[0]);
+        CloseHandle(std[1]);
+        CloseHandle(std[2]);
+        CloseHandle(si.hStdError);
+        CloseHandle(si.hStdOutput);
+        CloseHandle(si.hStdInput);
+        return 8;
     }
-    
-    if(!CreateProcessA(NULL, command, NULL, NULL, inherit, 0, NULL, NULL, &si, &pi)) return 1;
-    WaitForSingleObject(pi.hProcess, INFINITE);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
 
-    if(inherit) {
-        DWORD stdoutReadSize = GetFileSize(stdoutRead, NULL);
-        DWORD stderrReadSize = GetFileSize(stderrRead, NULL);
+    char buff[BUFF_SIZE];
+    DWORD bytesRead = 0;
+    OVERLAPPED overlapped;
+    overlapped.hEvent = hEvent;
+    BOOL result = FALSE;
+    char currentResult = 0;
+    BOOL loop = TRUE;
 
-        DWORD read, totalRead = 0UL;
-        DWORD written;
-        char tempBuff[BUFF_SIZE];
+    //char vfr[100];
 
-        // Lecture et copie de stdout
-        if(stdoutReadSize > 0UL) {
-            if(out) {
-                while(1) {
-                    if(!ReadFile(stdoutRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-                    totalRead += read;
-                    add_allocate((void **) &out->array, tempBuff, read, 1, &out->length);
-                    if(totalRead == stdoutReadSize) break;
+    while(loop) {
+        loop = FALSE;
+        result = ReadFile(std[currentResult], buff, BUFF_SIZE, &bytesRead, &overlapped);
+
+        //sprintf(vfr, "Current STD : %d", currentResult);
+        //MessageBox(NULL, vfr, "Info", MB_OK);
+        if(!result) {
+            switch(GetLastError()) {
+                case ERROR_SUCCESS:
+                case ERROR_BROKEN_PIPE:
+                    if(currentResult == 2) break;
+                    currentResult++;
+                    loop = TRUE;
+                    continue;
+                case ERROR_IO_PENDING: {
+                    BOOL pending = TRUE;
+                    while(pending) {
+                        pending = FALSE;
+                        //wprintf(L"IO pending...\n");
+                        result = GetOverlappedResult(std[currentResult], &overlapped, &bytesRead, FALSE);
+                        if(!result) {
+                            switch(GetLastError()) {
+                                case ERROR_HANDLE_EOF:
+                                    //wprintf(L"GetOverlappedResult found EOF\n");
+                                    break;
+                                case ERROR_IO_INCOMPLETE:
+                                    //wprintf(L"GetOverlappedResult IO incomplete\n");
+                                    pending = TRUE;
+                                    loop = TRUE;
+                                    break;
+                                case ERROR_BROKEN_PIPE:
+                                    //MessageBox(NULL, "Test", "MessageBox", MB_OK);
+                                    //wprintf(L"Broken pipe\n");
+                                    break;
+                                default:
+                                    //wprintf(L"GetOverlappedResult unknown error : %lu\n", GetLastError());
+                                    break;
+                            }
+                        }else {
+                            //wprintf(L"Bytes read : %lu\n", bytesRead);
+                            ResetEvent(overlapped.hEvent);
+                            loop = TRUE;
+                        }
+                    }
+                    break;
                 }
-                out->array = realloc(out->array, out->length + 1);
-                out->array[out->length] = '\0';
-            }else {
-                while(1) {
-                    if(!ReadFile(stdoutRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-                    totalRead += read;
-                    WriteFile(stdoutParent, tempBuff, read, &written, NULL);
-                    if(totalRead == stdoutReadSize) break;
-                }
+                default:
+                    wprintf(L"Unknown error : %lu\n", GetLastError());
+                    break;
+            }
+        }else {
+            //wprintf(L"Finish sync\n");
+            loop = TRUE;
+        }
+        if(std[currentResult] == std[0]) {
+            if(bytesRead > 0) {
+                if(error) *error = 1;
+                if(err)
+                    add_allocate((void **) &err->array, buff, bytesRead, 1, &err->length);
+                else
+                    WriteFile(GetStdHandle(STD_ERROR_HANDLE), buff, bytesRead, NULL, NULL);
+            }
+        }else if(std[currentResult] == std[1]) {
+            if(bytesRead > 0) {
+                if(out)
+                    add_allocate((void **) &out->array, buff, bytesRead, 1, &out->length);
+                else
+                    WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buff, bytesRead, NULL, NULL);
             }
         }
-        
-        totalRead = 0UL;
-
-        // Lecture et copie de stderr
-        if(stderrReadSize > 0UL) {
-            if(err) {
-                while(1) {
-                    if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-                    totalRead += read;
-                    add_allocate((void **) &err->array, tempBuff, read, 1, &err->length);
-                    if(totalRead == stderrReadSize) break;
-                }
-                err->array = realloc(err->array, err->length + 1);
-                err->array[err->length] = '\0';
-            }else {
-                while(1) {
-                    if(!ReadFile(stderrRead, tempBuff, BUFF_SIZE, &read, NULL) || read == 0) return 2;
-                    totalRead += read;
-                    WriteFile(stderrParent, tempBuff, read, &written, NULL);
-                    if(totalRead == stderrReadSize) break;
-                }
-            }
-        }
+        overlapped.Offset += bytesRead;
     }
+    if(out) {
+        out->array = realloc(out->array, out->length + 1);
+        out->array[out->length] = '\0';
+    }
+    if(err) {
+        err->array = realloc(err->array, err->length + 1);
+        err->array[err->length] = '\0';
+    }
+    //printf("Completed ! %lu bytes read.\n\n%s\n", overlapped.Offset, fileContent);
+
+    CloseHandle(hEvent);
+    CloseHandle(std[0]);
+    CloseHandle(std[1]);
+    CloseHandle(std[2]);
+
     return 0;
 }
 
@@ -362,7 +526,7 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
     return filenameLength;
 }
 
-char create_object(Array_Char *cFile, Array_Char *oFile) {
+char create_object(Array_Char *cFile, Array_Char *oFile, char *error) {
     char *command = NULL;
     unsigned long commandSize = 0UL;
     commandSize = 15 + cFile->length + oFile->length + compileOptions.length + includes.length + libs.length;
@@ -370,9 +534,8 @@ char create_object(Array_Char *cFile, Array_Char *oFile) {
     sprintf(command, "gcc -c %s -o %s %s %s %s", cFile->array, oFile->array, compileOptions.array, includes.array, libs.array);
     wprintf(L"%S\n", command);
     char result;
-    if((result = execute_command(command, NULL, NULL, FALSE)) != 0)
-        if(result == 1)
-            error_create_process(command);
+    if((result = execute_command(command, NULL, NULL, error)) != 0)
+        execute_command_failed(command, result);
     free(command);
     return result;
 }
@@ -546,5 +709,34 @@ void get_path(Array_Char *dest, Array_Char *filename) {
         dest->array = malloc(lastBackslash + 1);
         memcpy(dest->array, filename->array, lastBackslash);
         dest->array[lastBackslash] = '\0';
+    }
+}
+
+void execute_command_failed(const char *command, char result) {
+    switch(result) {
+        case 1:
+            error_create_pipe(command, STDERR);
+            break;
+        case 2:
+            error_create_pipe(command, STDOUT);
+            break;
+        case 3:
+            error_create_pipe(command, STDIN);
+            break;
+        case 4:
+            error_create_event(command);
+            break;
+        case 5:
+            error_create_std(command, STDERR);
+            break;
+        case 6:
+            error_create_std(command, STDOUT);
+            break;
+        case 7:
+            error_create_std(command, STDIN);
+            break;
+        case 8:
+            error_create_process(command);
+            break;
     }
 }

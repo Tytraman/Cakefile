@@ -62,10 +62,16 @@ void empty_str(char **str);
     `error` si non NULL, contiendra 0 si le flux d'erreur est vide, sinon elle contiendra 1.
 
     Retourne 0 en cas de succès, sinon :
-    - 1 quand le process n'a pas pu être créé,
-    - 2 quand les données n'ont pas pu être lues.
+    - 1 lorsque le pipe STDERR n'a pas pu être créé.
+    - 2 lorsque le pipe STDOUT n'a pas pu être créé.
+    - 3 lorsque le pipe STDIN n'a pas pu être créé.
+    - 4 lorsque l'event n'a pas pu être créé.
+    - 5 lorsque le pipe STDERR ne peut pas être utilisé.
+    - 6 lorsque le pipe STDOUT ne peut pas être utilisé.
+    - 7 lorsque le pipe STDIN ne peut pas être utilisé.
+    - 8 lorsque la commande n'a pas pu être exécutée.
 */
-char execute_command(char *command, Array_Char *out, Array_Char *err, BOOL inherit);
+char execute_command(char *command, Array_Char *out, Array_Char *err, char *error);
 
 // Fait une liste des fichiers de la commande `dir` pour pouvoir les énumérer.
 unsigned long list_files(Array_Char ***dest, Array_Char *files);
@@ -136,7 +142,7 @@ unsigned long get_last_backslash(char *filenameEnd, unsigned long filenameLength
     - 1 quand le process n'a pas pu être créé,
     - 2 quand les données n'ont pas pu être lues.
 */
-char create_object(Array_Char *cFile, Array_Char *oFile);
+char create_object(Array_Char *cFile, Array_Char *oFile, char *error);
 
 unsigned long long filetime_to_ularge(FILETIME *ft);
 
@@ -152,5 +158,7 @@ unsigned long str_replace_c(char *str, unsigned long strSize, char toReplace, ch
 void check_includes(Array_Char *fileC, Array_Char *fileO, unsigned long **list, unsigned long *listSize, unsigned long current);
 
 void get_path(Array_Char *dest, Array_Char *filename);
+
+void execute_command_failed(const char *command, char result);
 
 #endif
