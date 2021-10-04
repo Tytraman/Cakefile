@@ -8,18 +8,18 @@ void error_file_not_found(const char *filename) {
     programStatus = PROGRAM_STATUS_FILE_NOT_FOUND;
 }
 
-void error_key_not_found(const char *key) {
-    wprintf(L"[%S] Erreur : Clé introuvable -> %S\n", PROGRAM_NAME, key);
+void error_key_not_found(const wchar_t *key) {
+    wprintf(L"[%S] Erreur : Clé introuvable -> %s\n", PROGRAM_NAME, key);
     programStatus = PROGRAM_STATUS_KEY_NOT_FOUND;
 }
 
-void error_create_process(const char *command) {
-    wprintf(L"[%S] Erreur : Impossible d'exécuter cette commande (%lu) -> %S\n", PROGRAM_NAME, GetLastError(), command);
+void error_create_process(const wchar_t *command) {
+    wprintf(L"[%S] Erreur : Impossible d'exécuter cette commande (%lu) -> %s\n", PROGRAM_NAME, GetLastError(), command);
     programStatus = PROGRAM_STATUS_ERROR_CREATE_PROCESS;
 }
 
-void error_create_pipe(const char *command, const char *std) {
-    wprintf(L"[%S] Erreur : Impossible de créer le tunnel de redirection %S du processus (%lu) -> %S\n", PROGRAM_NAME, std, GetLastError(), command);
+void error_create_pipe(const wchar_t *command, const char *std) {
+    wprintf(L"[%S] Erreur : Impossible de créer le tunnel de redirection %S du processus (%lu) -> %s\n", PROGRAM_NAME, std, GetLastError(), command);
     programStatus = PROGRAM_STATUS_ERROR_CREATE_PIPE;
 }
 
@@ -28,12 +28,12 @@ void error_set_handle_infos() {
     programStatus = PROGRAM_STATUS_ERROR_SET_HANDLE_INFOS;
 }
 
-void error_create_folder(const char *folder) {
-    wprintf(L"[%S] Erreur : Impossible de créer le dossier -> %S\n", folder);
+void error_create_folder(const wchar_t *folder) {
+    wprintf(L"[%S] Erreur : Impossible de créer le dossier (%lu) -> %s\n", PROGRAM_NAME, GetLastError(), folder);
 }
 
-void error_open_file(const char *filename) {
-    wprintf(L"[%S] Erreur : Impossible d'ouvrir le fichier (%lu) -> %S\n", PROGRAM_NAME, GetLastError(), filename);
+void error_open_file(const wchar_t *filename) {
+    wprintf(L"[%S] Erreur : Impossible d'ouvrir le fichier (%lu) -> %s\n", PROGRAM_NAME, GetLastError(), filename);
 }
 
 void error_set_time(const char *filename) {
@@ -44,10 +44,39 @@ void error_use_pipe(const char *command) {
     wprintf(L"[%S] Erreur : Impossible d'utiliser les tunnels de redirections pour cette commande -> %S\n", PROGRAM_NAME, command);
 }
 
-void error_create_event(const char *command) {
-    wprintf(L"[%S] Erreur : Impossible de créer l'event (%lu) -> %S\n", PROGRAM_NAME, GetLastError(), command);
+void error_create_event(const wchar_t *command) {
+    wprintf(L"[%S] Erreur : Impossible de créer l'event (%lu) -> %s\n", PROGRAM_NAME, GetLastError(), command);
 }
 
-void error_create_std(const char *command, const char *std) {
-    wprintf(L"[%S] Erreur : Impossible de créer %S (%lu) -> %S\n", PROGRAM_NAME, std, GetLastError(), command);
+void error_create_std(const wchar_t *command, const char *std) {
+    wprintf(L"[%S] Erreur : Impossible de créer %S (%lu) -> %s\n", PROGRAM_NAME, std, GetLastError(), command);
+}
+
+void error_execute_command(const wchar_t *command, char result) {
+    switch(result) {
+        case 1:
+            error_create_pipe(command, STDERR);
+            break;
+        case 2:
+            error_create_pipe(command, STDOUT);
+            break;
+        case 3:
+            error_create_pipe(command, STDIN);
+            break;
+        case 4:
+            error_create_event(command);
+            break;
+        case 5:
+            error_create_std(command, STDERR);
+            break;
+        case 6:
+            error_create_std(command, STDOUT);
+            break;
+        case 7:
+            error_create_std(command, STDIN);
+            break;
+        case 8:
+            error_create_process(command);
+            break;
+    }
 }

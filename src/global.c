@@ -1,30 +1,31 @@
 #include "../include/global.h"
-#include "../include/utils.h"
 
-const char *VERSION      = "1.0.2";
+const char *VERSION      = "2.0.0";
 const char *PROGRAM_NAME = "Cake";
 
 const char *STDERR = "STDERR";
 const char *STDOUT = "STDOUT";
 const char *STDIN  = "STDIN";
 
-Array_Char programFilename;
-Array_Char pwd;
+char mode = MODE_ALL;
+
+String_UTF16 programFilename;
+String_UTF16 pwd;
 
 char programStatus = 0;
 
 HANDLE stdoutParent;
 HANDLE stderrParent;
 
-Array_Char srcDir;
-Array_Char objDir;
-Array_Char binDir;
+String_UTF16 srcDir;
+String_UTF16 objDir;
+String_UTF16 binDir;
 
-Array_Char includes;
-Array_Char libs;
+String_UTF16 includes;
+String_UTF16 libs;
 
-Array_Char compileOptions;
-Array_Char linkOptions;
-Array_Char linkLibs;
+String_UTF16 compileOptions;
+String_UTF16 linkOptions;
+String_UTF16 linkLibs;
 
-Array_Char exec;
+String_UTF16 exec;

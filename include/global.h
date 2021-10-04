@@ -1,13 +1,15 @@
 #ifndef __CAKE_GLOBAL_H__
 #define __CAKE_GLOBAL_H__
 
-#include "utils.h"
+#include "encoding/utf16.h"
 
 #include <windows.h>
 
 /*
+
     Fichier pour définir toutes les variables et les constantes
     communes à "tous" les fichiers.
+    
 */
 
 #define BUFF_SIZE 2048
@@ -20,6 +22,11 @@
 #define PROGRAM_STATUS_ERROR_CREATE_PIPE      6
 #define PROGRAM_STATUS_ERROR_SET_HANDLE_INFOS 7
 
+#define MODE_ALL   1
+#define MODE_RESET 2
+#define MODE_LINK  3
+#define MODE_CLEAN 4
+
 extern const char *VERSION;
 extern const char *PROGRAM_NAME;
 
@@ -27,8 +34,10 @@ extern const char *STDERR;
 extern const char *STDOUT;
 extern const char *STDIN;
 
-extern Array_Char programFilename;
-extern Array_Char pwd;
+extern char mode;
+
+extern String_UTF16 programFilename;
+extern String_UTF16 pwd;
 
 extern char programStatus;
 
@@ -38,17 +47,17 @@ extern HANDLE stdoutParent;
 extern HANDLE stderrParent;
 
 
-extern Array_Char srcDir;
-extern Array_Char objDir;
-extern Array_Char binDir;
+extern String_UTF16 srcDir;
+extern String_UTF16 objDir;
+extern String_UTF16 binDir;
 
-extern Array_Char includes;
-extern Array_Char libs;
+extern String_UTF16 includes;
+extern String_UTF16 libs;
 
-extern Array_Char compileOptions;
-extern Array_Char linkOptions;
-extern Array_Char linkLibs;
+extern String_UTF16 compileOptions;
+extern String_UTF16 linkOptions;
+extern String_UTF16 linkLibs;
 
-extern Array_Char exec;
+extern String_UTF16 exec;
 
 #endif

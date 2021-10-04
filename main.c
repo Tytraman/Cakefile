@@ -1,47 +1,34 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
 #include <windows.h>
 
-#include "include/utils.h"
 #include "include/global.h"
 #include "include/error.h"
+#include "include/encoding/utf8.h"
+#include "include/encoding/utf16.h"
+#include "include/file/file_utils.h"
+#include "include/memory/memory.h"
+#include "include/os/winapi.h"
 
+// Vérifie les arguments passés au programme.
+char check_args(int argc, char **argv);
+unsigned long list_files(String_UTF16 ***listDest, String_UTF16 *src);
+unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src);
+unsigned long check_who_must_compile(unsigned long **list, String_UTF16 **listO, String_UTF16 **listC, unsigned long listOsize);
+void check_includes(unsigned long **list, unsigned long *listSize, unsigned long current, String_UTF16 *fileC, String_UTF16 *fileO);
+char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error);
 
-#define MODE_ALL   1
-#define MODE_RESET 2
-#define MODE_LINK  3
-#define MODE_CLEAN 4
-
-
-int main(int argc, char **argv) {
-    // On vérifie que le programme est exécuté via un terminal, et pas en double cliquant dessus
-    HWND consoleWnd = GetConsoleWindow();
-    DWORD processID;
-    GetWindowThreadProcessId(consoleWnd, &processID);
-    if(GetCurrentProcessId() == processID) {
-        FreeConsole();
-        MessageBoxW(NULL, L"Le programme doit être exécuté depuis un terminal.", L"Erreur !", MB_OK | MB_ICONERROR);
-        return EXIT_FAILURE;
-    }
-    
-    // On met la console en UTF16 pour pouvoir écrire avec de l'unicode
-    _setmode(_fileno(stdin), _O_U16TEXT);
-    _setmode(_fileno(stdout), _O_U16TEXT);
-
-    char mode = MODE_ALL;   // Si l'utilisateur ne spécifie pas de mode, on le met en MODE_ALL par défaut.
-
-    // On vérifie les arguments passés si il y en a
+char check_args(int argc, char **argv) {
     if(argc > 1) {
-        if(strcmp(argv[1], "all") == 0)
+        if(strcasecmp(argv[1], "all") == 0)
             mode = MODE_ALL;
-        else if(strcmp(argv[1], "reset") == 0)
+        else if(strcasecmp(argv[1], "reset") == 0)
             mode = MODE_RESET;
-        else if(strcmp(argv[1], "link") == 0)
+        else if(strcasecmp(argv[1], "link") == 0)
             mode = MODE_LINK;
-        else if(strcmp(argv[1], "clean") == 0)
+        else if(strcasecmp(argv[1], "clean") == 0)
             mode = MODE_CLEAN;
-        else if(strcmp(argv[1], "--help") == 0) {
+        else if(strcasecmp(argv[1], "--help") == 0) {
             wprintf(
                 L"==========%S==========\n"
                 L"Lorsqu'aucun argument n'est passé, la commande est équivalente à `cake all`.\n\n"
@@ -70,11 +57,11 @@ int main(int argc, char **argv) {
                 L"========================\n"
                 , PROGRAM_NAME
             );
-            return EXIT_SUCCESS;
+            return 0;
         }else if(strcmp(argv[1], "--version") == 0) {
             wprintf(L"%S x%S version %S\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
-            return EXIT_SUCCESS;
-        }else if(strcmp(argv[1], "--generate") == 0) {
+            return 0;
+        }else if(strcasecmp(argv[1], "--generate") == 0) {
             char cakefile[] = "Cakefile";
             if(GetFileAttributesA(cakefile) == 0xffffffff) {
                 unsigned char defaultCakefile[] =
@@ -96,289 +83,456 @@ int main(int argc, char **argv) {
                 fclose(pCakefile);
             }else
                 wprintf(L"[%S] Il existe déjà un fichier `%S`.\n", PROGRAM_NAME, cakefile);
-            return EXIT_SUCCESS;
+            return 0;
         }else {
             wprintf(L"[%S] Argument invalide, entre `cake --help` pour afficher l'aide.", PROGRAM_NAME);
-            return EXIT_FAILURE;
+            return 0;
+        }
+    }
+    return 1;
+}
+
+unsigned long list_files(String_UTF16 ***listDest, String_UTF16 *src) {
+    unsigned long size = 0;
+    *listDest = NULL;
+
+    wchar_t *ptr = src->characteres;
+    unsigned long i;
+    for(i = 0; i < src->length; i++) {
+        if(src->characteres[i] == L'\r') {
+            *listDest = realloc(*listDest, (size + 1) * sizeof(String_UTF16 *));
+            (*listDest)[size] = malloc(sizeof(String_UTF16));
+            create_string_utf16((*listDest)[size]);
+            src->characteres[i] = L'\0';
+            string_utf16_set_value((*listDest)[size], ptr);
+            string_utf16_remove((*listDest)[size], pwd.characteres);
+            size++;
+            i++;
+            ptr = &src->characteres[i + 1];
         }
     }
 
-    programFilename.length = get_program_file_name(&programFilename.array);
-    pwd.length = get_current_process_location(&pwd.array);
+    return size;
+}
 
-    FILE *pFile = fopen("Cakefile", "rb");
-    if(!pFile) {
-        error_file_not_found("Cakefile");
-        return EXIT_FAILURE;
-    }
-    
-    // Copie du fichier de configuration :
-    unsigned char buff[BUFF_SIZE];
-
-    long fileSize = get_file_size(pFile);
-    unsigned char *fileBuffer = malloc(fileSize + 1);
-    size_t read, total = 0;
-
-    do {
-        read = fread(buff, 1, BUFF_SIZE, pFile);
-        memcpy(&fileBuffer[total], buff, read);
-        total += read;
-    }while(read > 0);
-
-    fileBuffer[fileSize] = '\0';
-
-    fclose(pFile);
-
-    // Récupération des paramètres :
-
-    srcDir.array  = NULL;
-    srcDir.length = 0UL;
-
-    objDir.array  = NULL;
-    objDir.length = 0UL;
-
-    binDir.array  = NULL;
-    binDir.length = 0UL;
-
-    includes.array  = NULL;
-    includes.length = 0UL;
-
-    libs.array  = NULL;
-    libs.length = 0UL;
-
-    compileOptions.array  = NULL;
-    compileOptions.length = 0UL;
-
-    linkOptions.array  = NULL;
-    linkOptions.length = 0UL;
-
-    linkLibs.array  = NULL;
-    linkLibs.length = 0UL;
-
-    unsigned char *temp;
-
-    char key1[] = "src_dir";
-    char key2[] = "obj_dir";
-    char key3[] = "bin_dir";
-    char key4[] = "exec_name";
-    char key5[] = "includes";
-    char key6[] = "libs";
-    char key7[] = "compile_options";
-    char key8[] = "link_options";
-    char key9[] = "link_l";
-
-    if((temp = get_key_value(key1, fileBuffer, fileSize, &srcDir.length)))
-        copy_value(&srcDir.array, temp, srcDir.length);
-    else {
-        error_key_not_found(key1);
-        goto program_end;
-    }
-
-    if((temp = get_key_value(key2, fileBuffer, fileSize, &objDir.length)))
-        copy_value(&objDir.array, temp, objDir.length);
-    else {
-        error_key_not_found(key2);
-        goto program_end;
-    }
-
-    if((temp = get_key_value(key3, fileBuffer, fileSize, &binDir.length)))
-        copy_value(&binDir.array, temp, binDir.length);
-    else {
-        error_key_not_found(key3);
-        goto program_end;
-    }
-
-    unsigned long execNameLength;
-    char *execName = NULL;
-    if((temp = get_key_value(key4, fileBuffer, fileSize, &execNameLength)))
-        copy_value(&execName, temp, execNameLength);
-    else {
-        execName = malloc(9);
-        memcpy(execName, "prog.exe", 9);
-    }
-
-    if((temp = get_key_value(key5, fileBuffer, fileSize, &includes.length)))
-        copy_value(&includes.array, temp, includes.length);
-    else
-        empty_str(&includes.array);
-
-    if((temp = get_key_value(key6, fileBuffer, fileSize, &libs.length)))
-        copy_value(&libs.array, temp, libs.length);
-    else
-        empty_str(&libs.array);
-
-    if((temp = get_key_value(key7, fileBuffer, fileSize, &compileOptions.length)))
-        copy_value(&compileOptions.array, temp, compileOptions.length);
-    else
-        empty_str(&compileOptions.array);
-
-    if((temp = get_key_value(key8, fileBuffer, fileSize, &linkOptions.length)))
-        copy_value(&linkOptions.array, temp, linkOptions.length);
-    else
-        empty_str(&linkOptions.array);
-
-    if((temp = get_key_value(key9, fileBuffer, fileSize, &linkLibs.length)))
-        copy_value(&linkLibs.array, temp, linkLibs.length);
-    else
-        empty_str(&linkLibs.array);
-
-    stdoutParent = GetStdHandle(STD_OUTPUT_HANDLE);
-    stderrParent = GetStdHandle(STD_ERROR_HANDLE);
-
-
-    Array_Char dirCout, dirCerr;
-    Array_Char dirHout, dirHerr;
-    dirCout.array = NULL; dirCerr.array = NULL;
-    dirHout.array = NULL; dirHerr.array = NULL;
-
-    char dirC[] = "cmd /C dir *.c /b/s";
-    char result;
-    if((result = execute_command(dirC, &dirCout, &dirCerr, NULL)) != 0) {
-        execute_command_failed(dirC, result);
-        goto program_end;
-    }
-
-    /* Le nom de l'exe est nécessaire dans tous les modes */
-    exec.length = binDir.length + execNameLength + 1;
-    exec.array = malloc(exec.length);
-    memcpy(exec.array, binDir.array, binDir.length);
-    exec.array[binDir.length] = '\\';
-    memcpy(&exec.array[binDir.length + 1], execName, execNameLength);
-    exec.array[exec.length] = '\0';
-    free(execName);
-    execName = NULL;
-    str_replace(&exec, '/', '\\');
-
-    /* La liste des fichiers C est nécessaire que pour compiler */
-    Array_Char **listC = NULL;
-    unsigned long listCsize = 0UL;
-
-    /* La liste des fichiers H est nécessaire que pour compiler */
-    Array_Char **listH = NULL;
-    unsigned long listHsize = 0UL;
-
-    /* La liste des fichiers O est nécessaire pour linker */
-    Array_Char **listO = NULL;
-    unsigned long listOsize = 0UL;
-
-    if(mode == MODE_ALL || mode == MODE_RESET || mode == MODE_LINK || mode == MODE_CLEAN)
-        if(dirCout.array)
-            listOsize = list_o_files(&listO, &dirCout);
+unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src) {
+    String_UTF16 srcCopy;
+    create_string_utf16(&srcCopy);
+    string_utf16_set_value(&srcCopy, src->characteres);
 
     unsigned long i;
+    for(i = 0; i < srcCopy.length - 2; i++)
+        if(srcCopy.characteres[i] == L'.' && (srcCopy.characteres[i + 1] == L'c' || srcCopy.characteres[i + 1] == L'C') && srcCopy.characteres[i + 2] == L'\r')
+            srcCopy.characteres[i + 1] = L'o';
 
-    unsigned long *needCompile = NULL;
-    unsigned long needCompileNumber = 0UL;
+    unsigned long number = list_files(listDest, &srcCopy);
+    free(srcCopy.characteres);
 
-    unsigned long compileNumber = 0UL;
+    String_UTF16 u;
+    create_string_utf16(&u);
+    string_utf16_set_value(&u, objDir.characteres);
+    string_utf16_add_char(&u, L'\\');
+    for(i = 0; i < number; i++)
+        if(!string_utf16_replace((*listDest)[i], srcDir.characteres, objDir.characteres))
+            string_utf16_insert((*listDest)[i], u.characteres);
+    free(u.characteres);
+
+    return number;
+}
+
+unsigned long check_who_must_compile(unsigned long **list, String_UTF16 **listO, String_UTF16 **listC, unsigned long listOsize) {
+    unsigned long number = 0UL;
+    unsigned long i;
+    FILETIME lastModifiedO, lastModifiedC;
+    HANDLE hFileO, hFileC;
+
+    for(i = 0UL; i < listOsize; i++) {
+        if(!file_exists(listO[i]->characteres)) {
+            *list = realloc(*list, (number + 1) * sizeof(unsigned long));
+            (*list)[number++] = i;
+        }else {
+            if((hFileO = CreateFileW(listO[i]->characteres, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                if((hFileC = CreateFileW(listC[i]->characteres, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                    GetFileTime(hFileO, NULL, NULL, &lastModifiedO);
+                    GetFileTime(hFileC, NULL, NULL, &lastModifiedC);
+                    if(CompareFileTime(&lastModifiedO, &lastModifiedC) == -1) {
+                        CloseHandle(hFileO);
+                        CloseHandle(hFileC);
+                        *list = realloc(*list, (number + 1) * sizeof(unsigned long));
+                        (*list)[number++] = i;
+                    }else {
+                        CloseHandle(hFileO);
+                        CloseHandle(hFileC);
+                        check_includes(list, &number, i, listC[i], listO[i]);
+                    }
+                }else {
+                    CloseHandle(hFileO);
+                    error_open_file(listC[i]->characteres);
+                }
+            }else
+                error_open_file(listO[i]->characteres);
+        }
+    }
+    return number;
+}
+
+void check_includes(unsigned long **list, unsigned long *listSize, unsigned long current, String_UTF16 *fileC, String_UTF16 *fileO) {
+    String_UTF8 fileUtf8;
+    create_string_utf8(&fileUtf8);
+    if(!open_utf8_file(&fileUtf8, fileC->characteres)) {
+        free(fileUtf8.bytes);
+        return;
+    }
+    String_UTF16 fileUtf16;
+    create_string_utf16(&fileUtf16);
+    string_utf8_to_utf16(&fileUtf8, &fileUtf16);
+    free(fileUtf8.bytes);
+
+    String_UTF16 **listI = NULL;
+    unsigned long listIsize = 0;
+    unsigned long i;
+
+    wchar_t *search = L"#include";
+
+    wchar_t *ptr;
+    unsigned long index = 0;
+    while((ptr = string_utf16_search_from(&fileUtf16, search, &index)) != NULL) {
+
+        // On cherche le premier '\"'
+        while(fileUtf16.characteres[index] != L'\"')
+            if(index == fileUtf16.length || fileUtf16.characteres[index] == L'\r' || fileUtf16.characteres[index++] == L'\n')
+                goto end_loop_search_includes;
+
+        ptr = &fileUtf16.characteres[++index];
+
+        // On cherche le deuxième '\"'
+        while(fileUtf16.characteres[index] != L'\"')
+            if(index == fileUtf16.length || fileUtf16.characteres[index] == L'\r' || fileUtf16.characteres[index++] == L'\n')
+                goto end_loop_search_includes;
+
+        // On récupère le nom du fichier include
+        listI = realloc(listI, (listIsize + 1) * sizeof(String_UTF16 *));
+        listI[listIsize] = malloc(sizeof(String_UTF16));
+        listI[listIsize]->length = &fileUtf16.characteres[index] - ptr;
+        listI[listIsize]->characteres = malloc(listI[listIsize]->length * sizeof(wchar_t) + sizeof(wchar_t));
+        memcpy(listI[listIsize]->characteres, ptr, listI[listIsize]->length * sizeof(wchar_t));
+        listI[listIsize]->characteres[listI[listIsize]->length] = L'\0';
+        listIsize++;
+
+        end_loop_search_includes: ;
+    }
+
+    // On vérifie si le fichier nécessite d'être recompilé
+    for(i = 0; i < listIsize; i++) {
+        string_utf16_replace_all_char(listI[i], L'/', L'\\');
+
+        String_UTF16 fullPath;
+        string_utf16_copy(fileC, &fullPath);
+        if(!string_utf16_remove_part_from_end(&fullPath, L'\\'))
+            string_utf16_empty(&fullPath);
+        else
+            string_utf16_add_char(&fullPath, L'\\');
+        string_utf16_add(&fullPath, listI[i]->characteres);
+
+        HANDLE hFileO, hFileH;
+        if((hFileH = CreateFileW(fullPath.characteres, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+            if((hFileO = CreateFileW(fileO->characteres, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+                FILETIME lastModifiedO, lastModifiedH;
+                GetFileTime(hFileO, NULL, NULL, &lastModifiedO);
+                GetFileTime(hFileH, NULL, NULL, &lastModifiedH);
+                if(CompareFileTime(&lastModifiedO, &lastModifiedH) == -1) {
+                    *list = realloc(*list, (*listSize + 1) * sizeof(unsigned long));
+                    (*list)[(*listSize)++] = current;
+                }
+                CloseHandle(hFileO);
+                CloseHandle(hFileH);
+            }else {
+                CloseHandle(hFileH);
+                error_open_file(fileO->characteres);
+            }
+        }else
+            error_open_file(fullPath.characteres);
+
+        free(fullPath.characteres);
+    }
+}
+
+char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
+    wchar_t space = L' ';
+    
+    String_UTF16 command;
+    create_string_utf16(&command);
+
+    // gcc -c "
+    string_utf16_set_value(&command, L"gcc -c \"");
+
+    // gcc -c "fichier.c
+    string_utf16_add(&command, cFile->characteres);
+
+    // gcc -c "fichier.c" -o "
+    string_utf16_add(&command, L"\" -o \"");
+
+    // gcc -c "fichier.c" -o "fichier.o
+    string_utf16_add(&command, oFile->characteres);
+
+    // gcc -c "fichier.c" -o "fichier.o" 
+    string_utf16_add(&command, L"\" ");
+
+    string_utf16_add(&command, compileOptions.characteres);
+    string_utf16_add_char(&command, space);
+
+    string_utf16_add(&command, includes.characteres);
+    string_utf16_add_char(&command, space);
+
+    string_utf16_add(&command, libs.characteres);
+
+    wprintf(L"%s\n", command.characteres);
+
+    char result;
+    if((result = execute_command(command.characteres, NULL, NULL, error)) != 0)
+        error_execute_command(command.characteres, result);
+    free(command.characteres);
+    return result;
+}
+
+int main(int argc, char **argv) {
+    // On vérifie que le programme est exécuté via un terminal, et pas en double cliquant dessus
+    HWND consoleWnd = GetConsoleWindow();
+    DWORD processID;
+    GetWindowThreadProcessId(consoleWnd, &processID);
+    if(GetCurrentProcessId() == processID) {
+        FreeConsole();
+        MessageBoxW(NULL, L"Le programme doit être exécuté depuis un terminal.", L"Erreur !", MB_OK | MB_ICONERROR);
+        return EXIT_FAILURE;
+    }
+
+    set_console_UTF16();
+
+    if(!check_args(argc, argv))
+        return 0;
+
+    create_string_utf16(&programFilename);
+    create_string_utf16(&pwd);
+    get_program_file_name(&programFilename);
+    get_current_process_location(&pwd);
+
+    String_UTF8 fileUtf8;
+    String_UTF16 fileUtf16;
+    create_string_utf16(&fileUtf16);
+    if(!open_utf8_file(&fileUtf8, L"Cakefile")) {
+        error_file_not_found("Cakefile");
+        return 1;
+    }
+    string_utf8_to_utf16(&fileUtf8, &fileUtf16);
+
+    // Récupération des paramètres :
+    create_string_utf16(&srcDir);
+    create_string_utf16(&objDir);
+    create_string_utf16(&binDir);
+    create_string_utf16(&includes);
+    create_string_utf16(&libs);
+    create_string_utf16(&compileOptions);
+    create_string_utf16(&linkOptions);
+    create_string_utf16(&linkLibs);
+    create_string_utf16(&exec);
+
+    wchar_t *key1 = L"src_dir";
+    wchar_t *key2 = L"obj_dir";
+    wchar_t *key3 = L"bin_dir";
+    wchar_t *key4 = L"exec_name";
+    wchar_t *key5 = L"includes";
+    wchar_t *key6 = L"libs";
+    wchar_t *key7 = L"compile_options";
+    wchar_t *key8 = L"link_options";
+    wchar_t *key9 = L"link_l";
+
+    if(!string_utf16_key_value(key1, &fileUtf16, &srcDir)) {
+        error_key_not_found(key1);
+        //goto program_end;
+    }
+    //wprintf(L"Clé 1 trouvée\n");
+
+    if(!string_utf16_key_value(key2, &fileUtf16, &objDir)) {
+        error_key_not_found(key2);
+        //goto program_end;
+    }
+    //wprintf(L"Clé 2 trouvée\n");
+
+    if(!string_utf16_key_value(key3, &fileUtf16, &binDir)) {
+        error_key_not_found(key3);
+        //goto program_end;
+    }
+
+    String_UTF16 execName;
+    create_string_utf16(&execName);
+    if(!string_utf16_key_value(key4, &fileUtf16, &execName))
+        string_utf16_set_value(&execName, L"prog.exe");
+
+    if(!string_utf16_key_value(key5, &fileUtf16, &includes))
+        string_utf16_empty(&includes);
+
+    if(!string_utf16_key_value(key6, &fileUtf16, &libs))
+        string_utf16_empty(&libs);
+
+    if(!string_utf16_key_value(key7, &fileUtf16, &compileOptions))
+        string_utf16_empty(&compileOptions);
+
+    if(!string_utf16_key_value(key8, &fileUtf16, &linkOptions))
+        string_utf16_empty(&linkOptions);
+
+    if(!string_utf16_key_value(key9, &fileUtf16, &linkLibs))
+        string_utf16_empty(&linkLibs);
+
+    char commandResult;
+
+    // On récupère la liste de tous les fichiers C du dossier et des sous dossiers.
+    String_UTF16 out_dirC;
+    wchar_t *command_dirC = L"cmd /c chcp 65001>NUL & dir *.c /b/s";
+    if((commandResult = execute_command(command_dirC, &out_dirC, NULL, NULL)) != 0) {
+        wprintf(L"Erreur lors de l'exécution de la commande : %d\n", commandResult);
+    }else {
+        //wprintf(L"Résultat de la commande :\n%s\n", out_dirC.characteres);
+    }
+
+    // On stock le nom de l'exécutable avec son chemin relatif.
+    string_utf16_set_value(&exec, binDir.characteres);
+    string_utf16_add_char(&exec, L'\\');
+    string_utf16_add(&exec, execName.characteres);
+    string_utf16_replace_all_char(&exec, L'/', L'\\');
+    free(execName.characteres);
+
+    // Liste des fichiers C, pour compiler.
+    String_UTF16 **listC = NULL;
+    unsigned long listCsize = 0;
+
+    // Liste des fichiers O, pour linker.
+    String_UTF16 **listO = NULL;
+    unsigned long listOsize = 0;
+
+    if(out_dirC.characteres)
+        listOsize = list_o_files(&listO, &out_dirC);
+
+    char result;
+    unsigned long *list = NULL;
+    unsigned long needCompileNumber;
+    unsigned long i;
+
     unsigned long long startTime;
+    unsigned long compileNumber = 0;
 
-    char isLink = 0;
-
-    unsigned long cleanCommandSize = 25 + objDir.length * 2;
-    char *cleanCommand = malloc(cleanCommandSize + 1);
-    sprintf(cleanCommand, "cmd /C if exist %s rd /q/s %s", objDir.array, objDir.array);
+    char error, isLink = 0;
 
     switch(mode) {
-        case MODE_CLEAN:
-clean:
+        case MODE_CLEAN:{
+            clean: ;
+            String_UTF16 cleanCommand;
+            create_string_utf16(&cleanCommand);
+            string_utf16_set_value(&cleanCommand, L"cmd /c if exist ");
+            string_utf16_add(&cleanCommand, objDir.characteres);
+            string_utf16_add(&cleanCommand, L" rd /q/s ");
+            string_utf16_add(&cleanCommand, objDir.characteres);
             wprintf(L"Nettoyage...\n");
-            if((result = execute_command(cleanCommand, NULL, NULL, NULL)) != 0) {
-                execute_command_failed(cleanCommand, result);
-                goto pre_end1;
+            if((result = execute_command(cleanCommand.characteres, NULL, NULL, NULL)) != 0) {
+                error_execute_command(cleanCommand.characteres, result);
+                free(cleanCommand.characteres);
+                goto end;
             }
-            remove(exec.array);
+            free(cleanCommand.characteres);
+            _wremove(exec.characteres);
             if(mode == MODE_RESET) goto reset;
-            else goto pre_end1;
+            goto end;
+        }
         case MODE_RESET:
             goto clean;
-reset:
-        case MODE_ALL:
-            if(dirCout.array) {
-                listCsize = list_files(&listC, &dirCout);
-                free(dirCout.array);
-                free(dirCerr.array);
-                dirCout.array = NULL;
-                dirCerr.array = NULL;
-            }
-            if((result = mkdirs(objDir.array)) != 0)
-                if(result == 2) error_create_folder(objDir.array);
-            needCompileNumber = check_who_must_compile(&needCompile, listO, listC, listOsize);
-            for(i = 0UL; i < needCompileNumber; i++) {
-                Array_Char objPath;
-                get_path(&objPath, listO[needCompile[i]]);
-                if((result = mkdirs(objPath.array)) != 0)
-                    if(result == 2) error_create_folder(objPath.array);
-                free(objPath.array);
+            reset:
+        case MODE_ALL:{
+            if(out_dirC.characteres)
+                listCsize = list_files(&listC, &out_dirC);
+            mkdirs(objDir.characteres);
+
+            needCompileNumber = check_who_must_compile(&list, listO, listC, listOsize);
+
+            for(i = 0; i < needCompileNumber; i++) {
+                String_UTF16 copy;
+                string_utf16_copy(listO[list[i]], &copy);
+                string_utf16_remove_part_from_end(&copy, L'\\');
+                mkdirs(copy.characteres);
+                free(copy.characteres);
             }
             startTime = get_current_time_millis();
-            if(needCompileNumber > 0) {
+            if(needCompileNumber) {
                 wprintf(L"==========Compilation==========\n");
-                unsigned long currentCompile;
-                for(currentCompile = 0UL; currentCompile < needCompileNumber; currentCompile++) {
-                    char error;
-                    if(create_object(listC[needCompile[currentCompile]], listO[needCompile[currentCompile]], &error) == 0 && error == 0)
+                for(i = 0; i < needCompileNumber; i++) {
+                    if(create_object(listC[list[i]], listO[list[i]], &error) == 0 && error == 0)
                         compileNumber++;
                 }
                 wprintf(L"===============================\n\n\n");
             }
+        }
         case MODE_LINK:
-            if(mode == MODE_LINK) startTime = get_current_time_millis();
-            if((result = mkdirs(binDir.array)) != 0)
-                if(result == 2) error_create_folder(binDir.array);
+            if(mode == MODE_LINK)
+                startTime = get_current_time_millis();
+            mkdirs(binDir.characteres);
             if(mode == MODE_LINK || (compileNumber > 0 && compileNumber == needCompileNumber)) {
                 wprintf(L"==========Link==========\n");
-                str_replace(&includes, '/', '\\');
-                str_replace(&libs, '/', '\\');
-                unsigned long linkCommandSize = 11UL + exec.length + linkOptions.length + includes.length + libs.length + linkLibs.length;
-                char *linkCommand = NULL;
-                unsigned long i, j = 4UL;
-                for(i = 0UL; i < listOsize; i++)
-                    linkCommandSize += listO[i]->length + 1;
+                string_utf16_replace_all_char(&includes, L'/', L'\\');
+                string_utf16_replace_all_char(&libs, L'/', L'\\');
 
-                linkCommand = malloc(linkCommandSize + 1);
-                char cmdGcc[] = { 'g', 'c', 'c', ' ' };
-                char space = ' ';
-                char output[] = { '-', 'o', ' ' };
-                memcpy(linkCommand, cmdGcc, 4);
-                memcpy(&linkCommand[j], linkOptions.array, linkOptions.length);
-                j += linkOptions.length;
-                linkCommand[j++] = space;
+                String_UTF16 linkCommand;
+                create_string_utf16(&linkCommand);
 
-                for(i = 0UL; i < listOsize; i++) {
-                    memcpy(&linkCommand[j], listO[i]->array, listO[i]->length);
-                    j += listO[i]->length;
-                    memcpy(&linkCommand[j++], &space, 1);
+                // gcc 
+                string_utf16_set_value(&linkCommand, L"gcc ");
+
+                // gcc --option 
+                string_utf16_add(&linkCommand, linkOptions.characteres);
+                string_utf16_add_char(&linkCommand, L' ');
+
+                // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" 
+                for(i = 0; i < listOsize; i++) {
+                    string_utf16_add_char(&linkCommand, L'\"');
+                    string_utf16_add(&linkCommand, listO[i]->characteres);
+                    string_utf16_add(&linkCommand, L"\" ");
                 }
 
-                memcpy(&linkCommand[j], output, 3);
-                j += 3;
-                memcpy(&linkCommand[j], exec.array, exec.length);
-                j += exec.length;
-                linkCommand[j++] = space;
-                memcpy(&linkCommand[j], includes.array, includes.length);
-                j += includes.length;
-                linkCommand[j++] = space;
-                memcpy(&linkCommand[j], libs.array, libs.length);
-                j += libs.length;
-                linkCommand[j++] = space;
-                memcpy(&linkCommand[j], linkLibs.array, linkLibs.length);
+                // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" 
+                string_utf16_add(&linkCommand, L"-o \"");
+                string_utf16_add(&linkCommand, exec.characteres);
+                string_utf16_add_char(&linkCommand, L'\"');
 
-                linkCommand[linkCommandSize] = '\0';
+                // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" -I"C:\oui" 
+                if(includes.length) {
+                    string_utf16_add(&linkCommand, L" -I\"");
+                    string_utf16_add(&linkCommand, includes.characteres);
+                    string_utf16_add_char(&linkCommand, L'\"');
+                }
 
-                wprintf(L"%S\n", linkCommand);
-                char linkResult, error;
-                if((linkResult = execute_command(linkCommand, NULL, NULL, &error)) != 0) {
-                    execute_command_failed(linkCommand, result);
-                }else if(error == 0)
+                // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" -I"C:\oui" -L"C:\non" 
+                if(libs.length) {
+                    string_utf16_add(&linkCommand, L" -L\"");
+                    string_utf16_add(&linkCommand, libs.characteres);
+                    string_utf16_add_char(&linkCommand, L'\"');
+                }
+
+                // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" -I"C:\oui" -L"C:\non" -lhello
+                if(linkLibs.length) {
+                    string_utf16_add_char(&linkCommand, L' ');
+                    string_utf16_add(&linkCommand, linkLibs.characteres);
+                }
+
+                wprintf(L"%s\n", linkCommand.characteres);
+
+                if((result = execute_command(linkCommand.characteres, NULL, NULL, &error)) != 0)
+                    error_execute_command(linkCommand.characteres, result);
+                else if(error == 0)
                     isLink = 1;
-                free(linkCommand);
+                free(linkCommand.characteres);
                 wprintf(L"========================\n\n\n");
             }
             break;
+        default:
+            break;
     }
-
-    free(needCompile);
 
     unsigned long long endTime = get_current_time_millis();
     wprintf(L"==========Stats==========\n");
@@ -388,11 +542,11 @@ reset:
             break;
         case MODE_ALL:
         case MODE_RESET:
-            if(compileNumber > 0)
+            if (compileNumber > 0)
                 wprintf(
                     L"Fichiers compilés : %lu / %lu\n"
-                    L"Compilés%s en %llu ms.\n"
-                    , compileNumber, needCompileNumber, (isLink ? L" et linkés" : L""), endTime - startTime
+                    L"Compilés%s en %llu ms.\n",
+                    compileNumber, needCompileNumber, (isLink ? L" et linkés" : L""), endTime - startTime
                 );
             else
                 wprintf(L"Rien n'a changé...\n");
@@ -403,26 +557,32 @@ reset:
     }
     wprintf(L"=========================\n\n");
 
-pre_end1:
-    // Libération de la mémoire des listes de fichiers
-    if(listC)
-        free_list(&listC, listCsize);
-    if(listH)
-        free_list(&listH, listHsize);
-    if(listO)
-        free_list(&listO, listOsize);
-program_end:
-    free(objDir.array);
-    free(binDir.array);
-    free(execName);
-    free(fileBuffer);
-    free(includes.array);
-    free(libs.array);
-    free(compileOptions.array);
-    free(linkOptions.array);
-    free(programFilename.array);
-    free(exec.array);
-    free(cleanCommand);
-    wprintf(L"[%S] Terminé %s\n", PROGRAM_NAME, (programStatus != 0 ? L"avec une erreur..." : L"avec succès !"));
-    return (programStatus != 0 ? EXIT_FAILURE : EXIT_SUCCESS);
+    if(listC) {
+        for(i = 0; i < listCsize; i++)
+            free(listC[i]->characteres);
+        free(listC);
+    }
+
+    if(listO) {
+        for(i = 0; i < listOsize; i++)
+            free(listO[i]->characteres);
+        free(listO);
+    }
+
+end:
+    free(list);
+    free(out_dirC.characteres);
+    free(programFilename.characteres);
+    free(pwd.characteres);
+    free(srcDir.characteres);
+    free(objDir.characteres);
+    free(binDir.characteres);
+    free(includes.characteres);
+    free(libs.characteres);
+    free(compileOptions.characteres);
+    free(linkOptions.characteres);
+    free(linkLibs.characteres);
+    free(exec.characteres);
+
+    return 0;
 }
