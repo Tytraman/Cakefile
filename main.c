@@ -381,7 +381,7 @@ int main(int argc, char **argv) {
     create_string_utf16(&fileUtf16);
     if(!open_utf8_file(&fileUtf8, L"Cakefile")) {
         error_file_not_found("Cakefile");
-        free(fileUtf8.bytes);
+        free(fileUtf16.characteres);
         return 1;
     }
     string_utf8_to_utf16(&fileUtf8, &fileUtf16);
