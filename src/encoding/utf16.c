@@ -7,6 +7,7 @@
 void set_console_UTF16() {
     // On met la console en UTF16 pour pouvoir écrire avec de l'unicode
     _setmode(_fileno(stdin), _O_U16TEXT);
+    _setmode(_fileno(stderr), _O_U16TEXT);
     _setmode(_fileno(stdout), _O_U16TEXT);
 }
 
@@ -205,8 +206,13 @@ void string_utf16_copy(String_UTF16 *from, String_UTF16 *to) {
 
 char string_utf16_remove_from_index(String_UTF16 *utf, unsigned long index) {
     if(index < utf->length) {
-        utf->length = index - 1;
-        utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+        utf->length = index;
+        if(utf->length > 0)
+            utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+        else {
+            free(utf->characteres);
+            utf->characteres = malloc(sizeof(wchar_t));
+        }
         utf->characteres[utf->length] = L'\0';
         return 1;
     }
@@ -226,10 +232,67 @@ char string_utf16_remove_part_from_end(String_UTF16 *utf, wchar_t delim) {
     wchar_t *ptr = &utf->characteres[utf->length - 1];
     while(ptr >= utf->characteres) {
         if(*ptr == delim) {
-            string_utf16_remove_from_index(utf, (ptr - utf->characteres) + 1);
+            string_utf16_remove_from_index(utf, ptr - utf->characteres);
             return 1;
         }
         ptr--;
     }
     return 0;
+}
+
+char string_utf16_copy_between(String_UTF16 *from, String_UTF16 *to, unsigned long begin, unsigned long end) {
+    if(end <= begin) {
+        create_string_utf16(to);
+        string_utf16_empty(to);
+        return 0;
+    }
+
+    to->length = end - begin;
+    to->characteres = malloc(to->length * sizeof(wchar_t) + sizeof(wchar_t));
+    memcpy(to->characteres, &from->characteres[begin], (end - begin) * sizeof(wchar_t));
+    to->characteres[to->length] = L'\0';
+
+    return 1;
+}
+
+unsigned long string_utf16_number_of(String_UTF16 *utf, wchar_t charactere) {
+    unsigned long number = 0;
+    unsigned long i;
+
+    for(i = 0; i < utf->length; i++)
+        if(utf->characteres[i] == charactere)
+            number++;
+
+    return number;
+}
+
+wchar_t *string_utf16_find(String_UTF16 *utf, wchar_t research, unsigned long *index) {
+    unsigned long i;
+
+    for(i = *index; i < utf->length; i++) {
+        if(utf->characteres[i] == research) {
+            *index = i;
+            return &utf->characteres[i];
+        }
+    }
+
+    return NULL;
+}
+
+unsigned long string_utf16_rtrim(String_UTF16 *utf, wchar_t charactere) {
+    if(utf->length == 0) return 0;
+
+    unsigned long number = 0;
+    unsigned long index = utf->length - 1;
+
+    while(utf->characteres[index] == charactere) {
+        number++;
+        if(index == 0) break;
+        index--;
+    }
+
+    if(number > 0)
+        string_utf16_remove_from_index(utf, index + 1);
+
+    return number;
 }

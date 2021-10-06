@@ -17,6 +17,8 @@ unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src);
 unsigned long check_who_must_compile(unsigned long **list, String_UTF16 **listO, String_UTF16 **listC, unsigned long listOsize);
 void check_includes(unsigned long **list, unsigned long *listSize, unsigned long current, String_UTF16 *fileC, String_UTF16 *fileO);
 char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error);
+void combine_includes_path();
+void combine_libs_path();
 
 char check_args(int argc, char **argv) {
     if(argc > 1) {
@@ -58,7 +60,7 @@ char check_args(int argc, char **argv) {
                 , PROGRAM_NAME
             );
             return 0;
-        }else if(strcmp(argv[1], "--version") == 0) {
+        }else if(strcasecmp(argv[1], "--version") == 0) {
             wprintf(L"%S x%S version %S\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
             return 0;
         }else if(strcasecmp(argv[1], "--generate") == 0) {
@@ -82,10 +84,10 @@ char check_args(int argc, char **argv) {
                 fwrite(defaultCakefile, 1, 131, pCakefile);
                 fclose(pCakefile);
             }else
-                wprintf(L"[%S] Il existe déjà un fichier `%S`.\n", PROGRAM_NAME, cakefile);
+                fwprintf(stderr, L"[%S] Il existe déjà un fichier `%S`.\n", PROGRAM_NAME, cakefile);
             return 0;
         }else {
-            wprintf(L"[%S] Argument invalide, entre `cake --help` pour afficher l'aide.", PROGRAM_NAME);
+            fwprintf(stderr, L"[%S] Argument invalide, entre `cake --help` pour afficher l'aide.", PROGRAM_NAME);
             return 0;
         }
     }
@@ -222,6 +224,7 @@ void check_includes(unsigned long **list, unsigned long *listSize, unsigned long
         end_loop_search_includes: ;
     }
 
+
     // On vérifie si le fichier nécessite d'être recompilé
     for(i = 0; i < listIsize; i++) {
         string_utf16_replace_all_char(listI[i], L'/', L'\\');
@@ -258,8 +261,6 @@ void check_includes(unsigned long **list, unsigned long *listSize, unsigned long
 }
 
 char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
-    wchar_t space = L' ';
-    
     String_UTF16 command;
     create_string_utf16(&command);
 
@@ -275,14 +276,15 @@ char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
     // gcc -c "fichier.c" -o "fichier.o
     string_utf16_add(&command, oFile->characteres);
 
-    // gcc -c "fichier.c" -o "fichier.o" 
-    string_utf16_add(&command, L"\" ");
+    // gcc -c "fichier.c" -o "fichier.o"
+    string_utf16_add_char(&command, L'\"');
 
-    string_utf16_add(&command, compileOptions.characteres);
-    string_utf16_add_char(&command, space);
+    if(compileOptions.length) {
+        string_utf16_add_char(&command, L' ');
+        string_utf16_add(&command, compileOptions.characteres);
+    }
 
     string_utf16_add(&command, includes.characteres);
-    string_utf16_add_char(&command, space);
 
     string_utf16_add(&command, libs.characteres);
 
@@ -293,6 +295,64 @@ char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
         error_execute_command(command.characteres, result);
     free(command.characteres);
     return result;
+}
+
+void combine_includes_path() {
+    if(includes.length) {
+        unsigned long begin = 0, end = 0;
+                    
+        String_UTF16 copy, temp;
+        string_utf16_copy(&includes, &copy);
+        string_utf16_empty(&includes);
+
+        while(string_utf16_find(&copy, L'|', &end)) {
+            string_utf16_copy_between(&copy, &temp, begin, end);
+            string_utf16_rtrim(&temp, L'\\');
+            end++;
+            string_utf16_add(&includes, L" -I \"");
+            string_utf16_add(&includes, temp.characteres);
+            string_utf16_add_char(&includes, L'\"');
+            free(temp.characteres);
+            begin = end;
+        }
+
+        string_utf16_copy_between(&copy, &temp, begin, copy.length);
+        string_utf16_rtrim(&temp, L'\\');
+        string_utf16_add(&includes, L" -I \"");
+        string_utf16_add(&includes, temp.characteres);
+        string_utf16_add_char(&includes, L'\"');
+        free(temp.characteres);
+        free(copy.characteres);
+    }
+}
+
+void combine_libs_path() {
+    if(libs.length) {
+        unsigned long begin = 0, end = 0;
+                    
+        String_UTF16 copy, temp;
+        string_utf16_copy(&libs, &copy);
+        string_utf16_empty(&libs);
+
+        while(string_utf16_find(&copy, L'|', &end)) {
+            string_utf16_copy_between(&copy, &temp, begin, end);
+            string_utf16_rtrim(&temp, L'\\');
+            end++;
+            string_utf16_add(&libs, L" -L \"");
+            string_utf16_add(&libs, temp.characteres);
+            string_utf16_add_char(&libs, L'\"');
+            free(temp.characteres);
+            begin = end;
+        }
+
+        string_utf16_copy_between(&copy, &temp, begin, copy.length);
+        string_utf16_rtrim(&temp, L'\\');
+        string_utf16_add(&libs, L" -L \"");
+        string_utf16_add(&libs, temp.characteres);
+        string_utf16_add_char(&libs, L'\"');
+        free(temp.characteres);
+        free(copy.characteres);
+    }
 }
 
 int main(int argc, char **argv) {
@@ -321,9 +381,11 @@ int main(int argc, char **argv) {
     create_string_utf16(&fileUtf16);
     if(!open_utf8_file(&fileUtf8, L"Cakefile")) {
         error_file_not_found("Cakefile");
+        free(fileUtf8.bytes);
         return 1;
     }
     string_utf8_to_utf16(&fileUtf8, &fileUtf16);
+    free(fileUtf8.bytes);
 
     // Récupération des paramètres :
     create_string_utf16(&srcDir);
@@ -348,19 +410,17 @@ int main(int argc, char **argv) {
 
     if(!string_utf16_key_value(key1, &fileUtf16, &srcDir)) {
         error_key_not_found(key1);
-        //goto program_end;
+        goto end;
     }
-    //wprintf(L"Clé 1 trouvée\n");
 
     if(!string_utf16_key_value(key2, &fileUtf16, &objDir)) {
         error_key_not_found(key2);
-        //goto program_end;
+        goto end;
     }
-    //wprintf(L"Clé 2 trouvée\n");
 
     if(!string_utf16_key_value(key3, &fileUtf16, &binDir)) {
         error_key_not_found(key3);
-        //goto program_end;
+        goto end;
     }
 
     String_UTF16 execName;
@@ -371,8 +431,12 @@ int main(int argc, char **argv) {
     if(!string_utf16_key_value(key5, &fileUtf16, &includes))
         string_utf16_empty(&includes);
 
+    combine_includes_path();
+
     if(!string_utf16_key_value(key6, &fileUtf16, &libs))
         string_utf16_empty(&libs);
+    
+    combine_libs_path();
 
     if(!string_utf16_key_value(key7, &fileUtf16, &compileOptions))
         string_utf16_empty(&compileOptions);
@@ -383,16 +447,16 @@ int main(int argc, char **argv) {
     if(!string_utf16_key_value(key9, &fileUtf16, &linkLibs))
         string_utf16_empty(&linkLibs);
 
+    free(fileUtf16.characteres);
+
     char commandResult;
 
     // On récupère la liste de tous les fichiers C du dossier et des sous dossiers.
     String_UTF16 out_dirC;
     wchar_t *command_dirC = L"cmd /c chcp 65001>NUL & dir *.c /b/s";
-    if((commandResult = execute_command(command_dirC, &out_dirC, NULL, NULL)) != 0) {
+    if((commandResult = execute_command(command_dirC, &out_dirC, NULL, NULL)) != 0)
         wprintf(L"Erreur lors de l'exécution de la commande : %d\n", commandResult);
-    }else {
-        //wprintf(L"Résultat de la commande :\n%s\n", out_dirC.characteres);
-    }
+    
 
     // On stock le nom de l'exécutable avec son chemin relatif.
     string_utf16_set_value(&exec, binDir.characteres);
@@ -482,37 +546,34 @@ int main(int argc, char **argv) {
                 create_string_utf16(&linkCommand);
 
                 // gcc 
-                string_utf16_set_value(&linkCommand, L"gcc ");
+                string_utf16_set_value(&linkCommand, L"gcc");
 
                 // gcc --option 
-                string_utf16_add(&linkCommand, linkOptions.characteres);
-                string_utf16_add_char(&linkCommand, L' ');
+                if(linkOptions.length) {
+                    string_utf16_add_char(&linkCommand, L' ');
+                    string_utf16_add(&linkCommand, linkOptions.characteres);
+                }
 
                 // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" 
                 for(i = 0; i < listOsize; i++) {
-                    string_utf16_add_char(&linkCommand, L'\"');
+                    string_utf16_add(&linkCommand, L" \"");
                     string_utf16_add(&linkCommand, listO[i]->characteres);
-                    string_utf16_add(&linkCommand, L"\" ");
+                    string_utf16_add_char(&linkCommand, L'\"');
                 }
 
                 // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" 
-                string_utf16_add(&linkCommand, L"-o \"");
+                string_utf16_add(&linkCommand, L" -o \"");
                 string_utf16_add(&linkCommand, exec.characteres);
                 string_utf16_add_char(&linkCommand, L'\"');
 
                 // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" -I"C:\oui" 
-                if(includes.length) {
-                    string_utf16_add(&linkCommand, L" -I\"");
+                if(includes.length)
                     string_utf16_add(&linkCommand, includes.characteres);
-                    string_utf16_add_char(&linkCommand, L'\"');
-                }
+
 
                 // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" -I"C:\oui" -L"C:\non" 
-                if(libs.length) {
-                    string_utf16_add(&linkCommand, L" -L\"");
+                if(libs.length)
                     string_utf16_add(&linkCommand, libs.characteres);
-                    string_utf16_add_char(&linkCommand, L'\"');
-                }
 
                 // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" -I"C:\oui" -L"C:\non" -lhello
                 if(linkLibs.length) {
@@ -557,6 +618,8 @@ int main(int argc, char **argv) {
     }
     wprintf(L"=========================\n\n");
 
+    free(list);
+
     if(listC) {
         for(i = 0; i < listCsize; i++)
             free(listC[i]->characteres);
@@ -570,7 +633,6 @@ int main(int argc, char **argv) {
     }
 
 end:
-    free(list);
     free(out_dirC.characteres);
     free(programFilename.characteres);
     free(pwd.characteres);

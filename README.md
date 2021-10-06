@@ -1,7 +1,7 @@
 # Cakefile
 
-Reprend le principe de [**Make**](https://fr.wikipedia.org/wiki/Make), ne compile que les fichiers sources **modifiés**. Si un header a été modifié, tous les fichiers en dépandant seront **recompilés**.<br>
-### Caractères unicode et espaces pris en charges !<br><br>
+Reprend le principe de [**Make**](https://fr.wikipedia.org/wiki/Make), ne compile que les fichiers sources **modifiés**. Si un header a été modifié, tous les fichiers en dépandant seront **recompilés**.<br><br>
+### <span style="color:#f56e92">**Caractères unicode et espaces pris en charge !**</span><br><br>
 ## Installation
 ### Uniquement sous Windows !
 **Télécharge** l'exécutable ici : https://github.com/Tytraman/Cakefile/releases/latest, et tu peux soit le **copier** dans le dossier root de ton projet ou alors **l'ajouter** dans les variables d'environnement système pour y avoir accès partout.
@@ -61,8 +61,8 @@ Liste des options du fichier `Cakefile` :
 - **`obj_dir`** : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.
 - **`bin_dir`** : dossier où sera stocké l'exécutable final.
 - **`exec_name`** : nom de l'exécutable final.
-- **`includes`** : dossier externe au projet à inclure lors de l'utilisation d'une librairie, ce dossier contient tous les includes de cette dite librairie. ATTENTION, pour le moment **un seul** dossier ne peut être inclue, une maj sera faite dans le futur pour retirer ce problème.
-- **`libs`** : comme `includes`, mais pour les fichiers compilés ou sources de la librairie. Même problème que précédemment.
+- **`includes`** : dossiers externes au projet à inclure lors de l'utilisation d'une ou plusieurs librairies. Pour ajouter plusieurs dossiers, il faut les séparer avec la barre oblique `|`. Exemple : `C:\Lib1\include|C:\Lib2\include|C:\Program Files\Lib\include`.
+- **`libs`** : comme `includes`, mais pour les fichiers compilés ou sources de la librairie. Exemple : `C:\Lib1\lib|C:\Lib2\lib|C:\Program Files\Lib\lib`.
 - **`compile_options`** : options à passer lors de la compilation, exemple : `-Wall`.
 - **`link_options`** : options à passer lors du link, exemple : `-Wl,--gc-sections`.
 - **`link_l`** : liste des librairies avec lesquelles link, exemple : `-lWs2_32 -lssl -lcrypto`.

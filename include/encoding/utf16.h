@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+
 typedef struct String_UTF16 {
     unsigned long length;
     wchar_t *characteres;
@@ -13,6 +14,7 @@ typedef struct String_UTF16 {
 
 void create_string_utf16(String_UTF16 *utf);
 void string_utf16_copy(String_UTF16 *from, String_UTF16 *to);
+char string_utf16_copy_between(String_UTF16 *from, String_UTF16 *to, unsigned long begin, unsigned long end);
 
 
 
@@ -37,6 +39,7 @@ char string_utf16_remove(String_UTF16 *utf, wchar_t *str);
 char string_utf16_remove_from_index(String_UTF16 *utf, unsigned long index);
 char string_utf16_remove_before_index(String_UTF16 *utf, unsigned long index);
 char string_utf16_remove_part_from_end(String_UTF16 *utf, wchar_t delim);
+unsigned long string_utf16_rtrim(String_UTF16 *utf, wchar_t charactere);
 
 
 
@@ -57,8 +60,10 @@ void string_utf16_empty(String_UTF16 *utf);
 /* ===== Recherches ===== */
 
 wchar_t *string_utf16_search(String_UTF16 *utf, wchar_t *research);
+wchar_t *string_utf16_find(String_UTF16 *utf, wchar_t research, unsigned long *index);
 wchar_t *string_utf16_search_from(String_UTF16 *utf, wchar_t *research, unsigned long *index);
 char string_utf16_key_value(const wchar_t *key, String_UTF16 *src, String_UTF16 *dest);
+unsigned long string_utf16_number_of(String_UTF16 *utf, wchar_t charactere);
 
 
 
