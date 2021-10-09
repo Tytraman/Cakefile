@@ -83,7 +83,6 @@ char string_utf16_key_value(const wchar_t *key, String_UTF16 *src, String_UTF16 
                     i++;
                     valueLength++;
                 }
-                clean_string_utf16(dest);
                 dest->length = valueLength;
                 dest->characteres = malloc(valueLength * sizeof(wchar_t) + sizeof(wchar_t));
                 memcpy(dest->characteres, found, valueLength * sizeof(wchar_t));

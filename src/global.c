@@ -1,7 +1,8 @@
 #include "../include/global.h"
 
-const char *VERSION      = "2.0.0";
-const char *PROGRAM_NAME = "Cake";
+const char *VERSION             =  "2.1.0";
+const char *PROGRAM_NAME        =  "Cake";
+const wchar_t *OPTIONS_FILENAME = L"Cakefile";
 
 const char *STDERR = "STDERR";
 const char *STDOUT = "STDOUT";
@@ -14,18 +15,13 @@ String_UTF16 pwd;
 
 char programStatus = 0;
 
-HANDLE stdoutParent;
-HANDLE stderrParent;
-
-String_UTF16 srcDir;
-String_UTF16 objDir;
-String_UTF16 binDir;
-
-String_UTF16 includes;
-String_UTF16 libs;
-
-String_UTF16 compileOptions;
-String_UTF16 linkOptions;
-String_UTF16 linkLibs;
-
-String_UTF16 exec;
+Option o_language;
+Option o_srcDir;
+Option o_objDir;
+Option o_binDir;
+Option o_includes;
+Option o_libs;
+Option o_compileOptions;
+Option o_linkOptions;
+Option o_linkLibs;
+Option o_execName;

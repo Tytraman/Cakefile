@@ -1,7 +1,7 @@
 #ifndef __CAKE_GLOBAL_H__
 #define __CAKE_GLOBAL_H__
 
-#include "encoding/utf16.h"
+#include "option.h"
 
 #include <windows.h>
 
@@ -27,8 +27,9 @@
 #define MODE_LINK  3
 #define MODE_CLEAN 4
 
-extern const char *VERSION;
-extern const char *PROGRAM_NAME;
+extern const char    *VERSION;
+extern const char    *PROGRAM_NAME;
+extern const wchar_t *OPTIONS_FILENAME;
 
 extern const char *STDERR;
 extern const char *STDOUT;
@@ -41,23 +42,15 @@ extern String_UTF16 pwd;
 
 extern char programStatus;
 
-// Pointeur vers stdout (WINAPI).
-extern HANDLE stdoutParent;
-// Pointeur vers stderr (WINAPI).
-extern HANDLE stderrParent;
-
-
-extern String_UTF16 srcDir;
-extern String_UTF16 objDir;
-extern String_UTF16 binDir;
-
-extern String_UTF16 includes;
-extern String_UTF16 libs;
-
-extern String_UTF16 compileOptions;
-extern String_UTF16 linkOptions;
-extern String_UTF16 linkLibs;
-
-extern String_UTF16 exec;
+extern Option o_language;       // Obligatoire
+extern Option o_srcDir;         // Obligatoire
+extern Option o_objDir;         // Obligatoire
+extern Option o_binDir;         // Obligatoire
+extern Option o_execName;       // Obligatoire
+extern Option o_includes;
+extern Option o_libs;
+extern Option o_compileOptions;
+extern Option o_linkOptions;
+extern Option o_linkLibs;
 
 #endif

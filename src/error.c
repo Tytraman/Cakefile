@@ -3,8 +3,8 @@
 
 #include <stdio.h>
 
-void error_file_not_found(const char *filename) {
-    fwprintf(stderr, L"[%S] Erreur : Fichier introuvable -> %S\n", PROGRAM_NAME, filename);
+void error_file_not_found(const wchar_t *filename) {
+    fwprintf(stderr, L"[%S] Erreur : Fichier introuvable -> %s\n", PROGRAM_NAME, filename);
     programStatus = PROGRAM_STATUS_FILE_NOT_FOUND;
 }
 

@@ -1,5 +1,7 @@
 bin
-Cakefile
-.vscode
 obj
-cake.exe
+
+Cakefile
+
+.*
+*.exe

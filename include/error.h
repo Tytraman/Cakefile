@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-void error_file_not_found(const char *filename);
+void error_file_not_found(const wchar_t *filename);
 void error_key_not_found(const wchar_t *key);
 void error_create_process(const wchar_t *command);
 void error_create_pipe(const wchar_t *command, const char *std);
