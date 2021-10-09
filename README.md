@@ -6,6 +6,8 @@ Reprend le principe de [**Make**](https://fr.wikipedia.org/wiki/Make), ne compil
 ### Uniquement sous Windows !
 **Télécharge** l'exécutable ici : https://github.com/Tytraman/Cakefile/releases/latest, et tu peux soit le **copier** dans le dossier root de ton projet ou alors **l'ajouter** dans les variables d'environnement système pour y avoir accès partout.
 
+<br>
+
 ## Utilisation
 Pour utiliser la commande `cake`, un fichier `Cakefile` doit être présent dans le dossier root du projet.<br>
 La commande `cake --generate` permet de générer ce fichier avec les options par défaut.<br><br>
@@ -17,11 +19,14 @@ Liste des commandes :
 - **`cake --help`** : affiche l'aide.
 - **`cake --version`** : affiche la version installée du programme.
 
-Pour éviter de taper `cake all` à chaque fois, tu peux simplement taper **`cake`**, ça fait pareil (〃▽〃)<br><br>
+Pour éviter de taper `cake all` à chaque fois, tu peux simplement taper **`cake`**, ça fait pareil (〃▽〃)
+
+<br>
 
 ## Configuration
 Le fichier `Cakefile` contient toutes les options que le programme utilise, c'est le **pilier principal**, sans lui, rien ne va, alors il est très important de bien comprendre comment s'en servir.<br>
-En utilisant `cake`, une certaine structure de fichiers doit être respectée, les fichiers sources **DOIVENT** se situer dans le dossier root du projet **ET/OU** dans un sous-dossier contenant les fichiers sources.<br>
+En utilisant `cake`, une certaine structure de fichiers doit être respectée, les fichiers sources **DOIVENT** se situer dans le dossier root du projet **ET/OU** dans un sous-dossier contenant les fichiers sources.
+
 Voici un exemple :
 ```txt
 E:.
@@ -57,6 +62,7 @@ E:.
 `main.c` se situe dans le dossier root, et le dossier `src` contient tous les autres fichiers `.c`, ils peuvent être dans des sous-dossiers, du moment qu'ils sont dans le dossier `src`.<br><br>
 
 Liste des options du fichier `Cakefile` :
+- **`language`** : Langage de programmation utilisé, pour plus d'infos voir [**ici**](#head_languages).
 - **`src_dir`** : dossier contenant les fichiers sources.
 - **`obj_dir`** : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.
 - **`bin_dir`** : dossier où sera stocké l'exécutable final.
@@ -66,3 +72,10 @@ Liste des options du fichier `Cakefile` :
 - **`compile_options`** : options à passer lors de la compilation, exemple : `-Wall`.
 - **`link_options`** : options à passer lors du link, exemple : `-Wl,--gc-sections`.
 - **`link_l`** : liste des librairies avec lesquelles link, exemple : `-lWs2_32 -lssl -lcrypto`.
+
+<br>
+
+## <a name="head_languages"></a> Langages de programmation
+Cakefile ne fonctionne que sur des langages prédéfinis, dont voici la liste :
+- **`Langage C`** : gcc
+- **`C++`** : g++
