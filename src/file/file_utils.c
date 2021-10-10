@@ -24,7 +24,7 @@ unsigned long file_buffer(unsigned char **buffer, const wchar_t *filepath) {
     unsigned long index = 0;
     unsigned long i;
     long filesize = get_file_size(filepath);
-    *buffer = malloc(filesize * sizeof(unsigned char));
+    *buffer = (unsigned char *) malloc(filesize * sizeof(unsigned char));
     while((read = fread(buff, 1, 2048, pFile)) > 0) {
         for(i = 0; i < read; i++) {
             (*buffer)[index] = buff[i];

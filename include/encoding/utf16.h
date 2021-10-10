@@ -21,6 +21,8 @@ char string_utf16_copy_between(String_UTF16 *from, String_UTF16 *to, unsigned lo
 /* ===== Setter ===== */
 
 void string_utf16_set_value(String_UTF16 *utf, wchar_t *str);
+unsigned long string_utf16_lower(String_UTF16 *utf);
+unsigned long string_utf16_upper(String_UTF16 *utf);
 
 
 

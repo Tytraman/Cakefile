@@ -11,7 +11,6 @@
 #include "include/os/winapi.h"
 
 //TODO: refaire le message de la commande help
-//TODO: ajouter support g++
 
 // Vérifie les arguments passés au programme.
 char check_args(int argc, char **argv);
@@ -24,6 +23,8 @@ void combine_includes_path();
 void combine_libs_path();
 char load_options();
 void unload_options();
+char selectCompiler();
+void free_all();
 
 char check_args(int argc, char **argv) {
     if(argc > 1) {
@@ -69,8 +70,7 @@ char check_args(int argc, char **argv) {
             wprintf(L"%S x%S version %S\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
             return 0;
         }else if(strcasecmp(argv[1], "--generate") == 0) {
-            char cakefile[] = "Cakefile";
-            if(GetFileAttributesA(cakefile) == 0xffffffff) {
+            if(GetFileAttributesW(OPTIONS_FILENAME) == 0xffffffff) {
                 unsigned char defaultCakefile[] =
                     "language : c\n\n"
                     "src_dir : src\n"
@@ -86,11 +86,11 @@ char check_args(int argc, char **argv) {
                     "link_options : \n\n"
 
                     "link_l : ";
-                FILE *pCakefile = fopen(cakefile, "wb");
+                FILE *pCakefile = _wfopen(OPTIONS_FILENAME, L"wb");
                 fwrite(defaultCakefile, 1, 145, pCakefile);
                 fclose(pCakefile);
             }else
-                fwprintf(stderr, L"[%S] Il existe déjà un fichier `%S`.\n", PROGRAM_NAME, cakefile);
+                fwprintf(stderr, L"[%S] Il existe déjà un fichier `%s`.\n", PROGRAM_NAME, OPTIONS_FILENAME);
             return 0;
         }else {
             fwprintf(stderr, L"[%S] Argument invalide, entre `cake --help` pour afficher l'aide.", PROGRAM_NAME);
@@ -108,8 +108,8 @@ unsigned long list_files(String_UTF16 ***listDest, String_UTF16 *src) {
     unsigned long i;
     for(i = 0; i < src->length; i++) {
         if(src->characteres[i] == L'\r') {
-            *listDest = realloc(*listDest, (size + 1) * sizeof(String_UTF16 *));
-            (*listDest)[size] = malloc(sizeof(String_UTF16));
+            *listDest = (String_UTF16 **) realloc(*listDest, (size + 1) * sizeof(String_UTF16 *));
+            (*listDest)[size] = (String_UTF16 *) malloc(sizeof(String_UTF16));
             create_string_utf16((*listDest)[size]);
             src->characteres[i] = L'\0';
             string_utf16_set_value((*listDest)[size], ptr);
@@ -156,7 +156,7 @@ unsigned long check_who_must_compile(unsigned long **list, String_UTF16 **listO,
 
     for(i = 0UL; i < listOsize; i++) {
         if(!file_exists(listO[i]->characteres)) {
-            *list = realloc(*list, (number + 1) * sizeof(unsigned long));
+            *list = (unsigned long *) realloc(*list, (number + 1) * sizeof(unsigned long));
             (*list)[number++] = i;
         }else {
             if((hFileO = CreateFileW(listO[i]->characteres, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
@@ -166,7 +166,7 @@ unsigned long check_who_must_compile(unsigned long **list, String_UTF16 **listO,
                     if(CompareFileTime(&lastModifiedO, &lastModifiedC) == -1) {
                         CloseHandle(hFileO);
                         CloseHandle(hFileC);
-                        *list = realloc(*list, (number + 1) * sizeof(unsigned long));
+                        *list = (unsigned long *) realloc(*list, (number + 1) * sizeof(unsigned long));
                         (*list)[number++] = i;
                     }else {
                         CloseHandle(hFileO);
@@ -200,11 +200,11 @@ void check_includes(unsigned long **list, unsigned long *listSize, unsigned long
     unsigned long listIsize = 0;
     unsigned long i;
 
-    wchar_t *search = L"#include";
+    const wchar_t *search = L"#include";
 
     wchar_t *ptr;
     unsigned long index = 0;
-    while((ptr = string_utf16_search_from(&fileUtf16, search, &index)) != NULL) {
+    while((ptr = string_utf16_search_from(&fileUtf16, (wchar_t *) search, &index)) != NULL) {
 
         // On cherche le premier '\"'
         while(fileUtf16.characteres[index] != L'\"')
@@ -219,10 +219,10 @@ void check_includes(unsigned long **list, unsigned long *listSize, unsigned long
                 goto end_loop_search_includes;
 
         // On récupère le nom du fichier include
-        listI = realloc(listI, (listIsize + 1) * sizeof(String_UTF16 *));
-        listI[listIsize] = malloc(sizeof(String_UTF16));
+        listI = (String_UTF16 **) realloc(listI, (listIsize + 1) * sizeof(String_UTF16 *));
+        listI[listIsize] = (String_UTF16 *) malloc(sizeof(String_UTF16));
         listI[listIsize]->length = &fileUtf16.characteres[index] - ptr;
-        listI[listIsize]->characteres = malloc(listI[listIsize]->length * sizeof(wchar_t) + sizeof(wchar_t));
+        listI[listIsize]->characteres = (wchar_t *) malloc(listI[listIsize]->length * sizeof(wchar_t) + sizeof(wchar_t));
         memcpy(listI[listIsize]->characteres, ptr, listI[listIsize]->length * sizeof(wchar_t));
         listI[listIsize]->characteres[listI[listIsize]->length] = L'\0';
         listIsize++;
@@ -250,7 +250,7 @@ void check_includes(unsigned long **list, unsigned long *listSize, unsigned long
                 GetFileTime(hFileO, NULL, NULL, &lastModifiedO);
                 GetFileTime(hFileH, NULL, NULL, &lastModifiedH);
                 if(CompareFileTime(&lastModifiedO, &lastModifiedH) == -1) {
-                    *list = realloc(*list, (*listSize + 1) * sizeof(unsigned long));
+                    *list = (unsigned long *) realloc(*list, (*listSize + 1) * sizeof(unsigned long));
                     (*list)[(*listSize)++] = current;
                 }
                 CloseHandle(hFileO);
@@ -268,10 +268,11 @@ void check_includes(unsigned long **list, unsigned long *listSize, unsigned long
 
 char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
     String_UTF16 command;
-    create_string_utf16(&command);
+
+    string_utf16_copy(&compiler, &command);
 
     // gcc -c "
-    string_utf16_set_value(&command, L"gcc -c \"");
+    string_utf16_add(&command, L" -c \"");
 
     // gcc -c "fichier.c
     string_utf16_add(&command, cFile->characteres);
@@ -370,11 +371,11 @@ char load_options(String_UTF16 *from) {
     init_option(&o_linkLibs);
     init_option(&o_execName);
 
-    wchar_t *key_language = L"language";
-    wchar_t *key_srcDir   = L"src_dir";
-    wchar_t *key_objDir   = L"obj_dir";
-    wchar_t *key_binDir   = L"bin_dir";
-    wchar_t *key_execName = L"exec_name";
+    const wchar_t *key_language = L"language";
+    const wchar_t *key_srcDir   = L"src_dir";
+    const wchar_t *key_objDir   = L"obj_dir";
+    const wchar_t *key_binDir   = L"bin_dir";
+    const wchar_t *key_execName = L"exec_name";
 
     if(!load_option(key_language, from, &o_language)) {
         error_key_not_found(key_language);
@@ -427,6 +428,26 @@ void unload_options() {
         unload_option(options[i]);
 }
 
+char selectCompiler() {
+    create_string_utf16(&compiler);
+    string_utf16_lower(&o_language.value);
+    if(wcscmp(o_language.value.characteres, L"c") == 0) {
+        string_utf16_set_value(&compiler, L"gcc");
+        return 1;
+    }else if(wcscmp(o_language.value.characteres, L"c++") == 0 || wcscmp(o_language.value.characteres, L"cpp") == 0) {
+        string_utf16_set_value(&compiler, L"g++");
+        return 2;
+    }
+    return 0;
+}
+
+void free_all() {
+    unload_options();
+    free(programFilename.characteres);
+    free(pwd.characteres);
+    free(compiler.characteres);
+}
+
 int main(int argc, char **argv) {
     // On vérifie que le programme est exécuté via un terminal, et pas en double cliquant dessus
     HWND consoleWnd = GetConsoleWindow();
@@ -457,6 +478,12 @@ int main(int argc, char **argv) {
     free(fileUtf16.characteres);
     if(result != 0) {
         fwprintf(stderr, L"Une ou plusieurs clés obligatoires n'ont pas été trouvées.\n");
+        return 1;
+    }
+
+    if(!selectCompiler()) {
+        fwprintf(stderr, L"Le langage \"%s\" n'est pas pris en charge...\n", o_language.value.characteres);
+        unload_options();
         return 1;
     }
 
@@ -511,12 +538,18 @@ int main(int argc, char **argv) {
             if((result = execute_command(cleanCommand.characteres, NULL, NULL, NULL)) != 0) {
                 error_execute_command(cleanCommand.characteres, result);
                 free(cleanCommand.characteres);
-                goto end;
+                free(out_dirC.characteres);
+                free(exec.characteres);
+                free_all();
+                return 1;
             }
             free(cleanCommand.characteres);
             _wremove(exec.characteres);
             if(mode == MODE_RESET) goto reset;
-            goto end;
+            free(out_dirC.characteres);
+            free(exec.characteres);
+            free_all();
+            return 1;
         }
         case MODE_RESET:
             goto clean;
@@ -554,10 +587,9 @@ int main(int argc, char **argv) {
                 
 
                 String_UTF16 linkCommand;
-                create_string_utf16(&linkCommand);
 
                 // gcc
-                string_utf16_set_value(&linkCommand, L"gcc");
+                string_utf16_copy(&compiler, &linkCommand);
 
                 // gcc --option
                 if(o_linkOptions.loaded) {
@@ -610,11 +642,12 @@ int main(int argc, char **argv) {
     unsigned long long endTime = get_current_time_millis();
     wprintf(L"==========Stats==========\n");
     switch(mode) {
-        default:
+        default:{
             wprintf(L"Aucune stat pour ce mode...\n");
             break;
+        }
         case MODE_ALL:
-        case MODE_RESET:
+        case MODE_RESET:{
             if (compileNumber > 0)
                 wprintf(
                     L"Fichiers compilés : %lu / %lu\n"
@@ -624,9 +657,11 @@ int main(int argc, char **argv) {
             else
                 wprintf(L"Rien n'a changé...\n");
             break;
-        case MODE_LINK:
+        }
+        case MODE_LINK:{
             wprintf(L"Linkés en %llu ms.\n", endTime - startTime);
             break;
+        }
     }
     wprintf(L"=========================\n\n");
 
@@ -643,13 +678,6 @@ int main(int argc, char **argv) {
             free(listO[i]->characteres);
         free(listO);
     }
-
-end:
-    unload_options();
-    free(out_dirC.characteres);
-    free(programFilename.characteres);
-    free(pwd.characteres);
-    free(exec.characteres);
 
     return 0;
 }

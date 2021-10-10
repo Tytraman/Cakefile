@@ -53,4 +53,6 @@ extern Option o_compileOptions;
 extern Option o_linkOptions;
 extern Option o_linkLibs;
 
+extern String_UTF16 compiler;
+
 #endif

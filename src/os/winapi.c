@@ -245,11 +245,11 @@ char execute_command_ascii(char *command, Array_Char *out, Array_Char *err, char
         overlapped.Offset += bytesRead;
     }
     if(out) {
-        out->array = realloc(out->array, out->length + 1);
+        out->array = (char *) realloc(out->array, out->length + 1);
         out->array[out->length] = '\0';
     }
     if(err) {
-        err->array = realloc(err->array, err->length + 1);
+        err->array = (char *) realloc(err->array, err->length + 1);
         err->array[err->length] = '\0';
     }
     //printf("Completed ! %lu bytes read.\n\n%s\n", overlapped.Offset, fileContent);
@@ -264,7 +264,7 @@ char execute_command_ascii(char *command, Array_Char *out, Array_Char *err, char
 
 char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, char *error) {
     if(error) *error = 0;
-    wchar_t *pipeName = L"\\\\.\\pipe\\cakefile_pipe";
+    const wchar_t *pipeName = L"\\\\.\\pipe\\cakefile_pipe";
     HANDLE std[3] = { NULL, NULL, NULL };
 
     std[0] = CreateNamedPipeW(
@@ -384,7 +384,7 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
         create_string_utf16(err);
 
     size_t commandLength = wcslen(command);
-    wchar_t *commandCopy = malloc(commandLength * sizeof(wchar_t) + sizeof(wchar_t));
+    wchar_t *commandCopy = (wchar_t *) malloc(commandLength * sizeof(wchar_t) + sizeof(wchar_t));
     memcpy(commandCopy, command, commandLength * sizeof(wchar_t) + sizeof(wchar_t));
 
     if(CreateProcessW(NULL, commandCopy, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
@@ -480,7 +480,7 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
                 if(err){
                     tempSize = errBuffSize;
                     errBuffSize += bytesRead;
-                    errBuff = realloc(errBuff, errBuffSize);
+                    errBuff = (unsigned char *) realloc(errBuff, errBuffSize);
                     memcpy(&errBuff[tempSize], buff, bytesRead);
                 }else
                     WriteFile(GetStdHandle(STD_ERROR_HANDLE), buff, bytesRead, NULL, NULL);
@@ -490,7 +490,7 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
                 if(out) {
                     tempSize = outBuffSize;
                     outBuffSize += bytesRead;
-                    outBuff = realloc(outBuff, outBuffSize);
+                    outBuff = (unsigned char *) realloc(outBuff, outBuffSize);
                     memcpy(&outBuff[tempSize], buff, bytesRead);
                 }else
                     WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buff, bytesRead, NULL, NULL);
@@ -500,7 +500,7 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     }
 
     if(err) {
-        errBuff = realloc(errBuff, errBuffSize + 1);
+        errBuff = (unsigned char *) realloc(errBuff, errBuffSize + 1);
         errBuff[errBuffSize] = '\0';
         String_UTF8 utf8;
         create_string_utf8(&utf8);
@@ -510,7 +510,7 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
         free(errBuff);
     }
     if(out) {
-        outBuff = realloc(outBuff, outBuffSize + 1);
+        outBuff = (unsigned char *) realloc(outBuff, outBuffSize + 1);
         outBuff[outBuffSize] = '\0';
         String_UTF8 utf8;
         create_string_utf8(&utf8);

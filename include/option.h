@@ -11,7 +11,7 @@ typedef struct Option {
 
 void init_option(Option *opt);
 
-char load_option(wchar_t *key, String_UTF16 *from, Option *dest);
+char load_option(const wchar_t *key, String_UTF16 *from, Option *dest);
 void unload_option(Option *opt);
 
 #endif

@@ -25,3 +25,5 @@ Option o_compileOptions;
 Option o_linkOptions;
 Option o_linkLibs;
 Option o_execName;
+
+String_UTF16 compiler;

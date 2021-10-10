@@ -118,7 +118,7 @@ int string_utf8_decode(const unsigned char *src, char bytes) {
 void array_char_to_string_utf8(unsigned char *src, String_UTF8 *dest, unsigned long srcSize) {
     dest->data.length = srcSize;
     free(dest->bytes);
-    dest->bytes = malloc(srcSize);
+    dest->bytes = (unsigned char *) malloc(srcSize);
     memcpy(dest->bytes, src, srcSize);
     dest->length = string_utf8_length(dest);
 }

@@ -24,7 +24,7 @@ void clean_string_utf16(String_UTF16 *utf) {
 void string_utf16_set_value(String_UTF16 *utf, wchar_t *str) {
     utf->length = wcslen(str);
     free(utf->characteres);
-    utf->characteres = malloc(utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+    utf->characteres = (wchar_t *) malloc(utf->length * sizeof(wchar_t) + sizeof(wchar_t));
     memcpy(utf->characteres, str, utf->length * sizeof(wchar_t));
     utf->characteres[utf->length] = L'\0';
 }
@@ -33,14 +33,14 @@ void string_utf16_add(String_UTF16 *utf, wchar_t *str) {
     unsigned long lastLength = utf->length;
     unsigned long strLength = wcslen(str);
     utf->length += strLength;
-    utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+    utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
     memcpy(&utf->characteres[lastLength], str, strLength * sizeof(wchar_t));
     utf->characteres[utf->length] = L'\0';
 }
 
 void string_utf16_add_char(String_UTF16 *utf, wchar_t c) {
     utf->length += 1;
-    utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+    utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
     memcpy(&utf->characteres[utf->length - 1], &c, sizeof(wchar_t));
     utf->characteres[utf->length] = L'\0';
 }
@@ -84,7 +84,7 @@ char string_utf16_key_value(const wchar_t *key, String_UTF16 *src, String_UTF16 
                     valueLength++;
                 }
                 dest->length = valueLength;
-                dest->characteres = malloc(valueLength * sizeof(wchar_t) + sizeof(wchar_t));
+                dest->characteres = (wchar_t *) malloc(valueLength * sizeof(wchar_t) + sizeof(wchar_t));
                 memcpy(dest->characteres, found, valueLength * sizeof(wchar_t));
                 dest->characteres[valueLength] = L'\0';
                 return 1;
@@ -97,14 +97,14 @@ char string_utf16_key_value(const wchar_t *key, String_UTF16 *src, String_UTF16 
 void string_utf16_empty(String_UTF16 *utf) {
     utf->length = 0;
     free(utf->characteres);
-    utf->characteres = malloc(sizeof(wchar_t));
+    utf->characteres = (wchar_t *) malloc(sizeof(wchar_t));
     utf->characteres[0] = L'\0';
 }
 
 void string_utf16_add_bytes(String_UTF16 *utf, unsigned char *bytes, unsigned long size) {
     unsigned long lastLength = utf->length;
     utf->length += size;
-    utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t));
+    utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t));
     memcpy(&utf->characteres[lastLength], bytes, size * sizeof(wchar_t));
 }
 
@@ -122,7 +122,7 @@ char string_utf16_remove(String_UTF16 *utf, wchar_t *str) {
     size_t length = wcslen(str);
     memcpy(start, utf->characteres + length, (utf->length - length) * sizeof(wchar_t) + sizeof(wchar_t));
     utf->length -= length;
-    utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+    utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
     return 1;
 }
 
@@ -179,10 +179,10 @@ char string_utf16_replace(String_UTF16 *utf, wchar_t *old, wchar_t *replacement)
         memcpy(ptr + replacementLength, ptr + oldLength, (utf->length - ((ptr - utf->characteres) + oldLength)) * sizeof(wchar_t) + sizeof(wchar_t));
         memcpy(ptr, replacement, replacementLength * sizeof(wchar_t));
         utf->length -= oldLength - replacementLength;
-        utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+        utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
     }else if(oldLength < replacementLength) {
         utf->length += replacementLength - oldLength;
-        utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+        utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
         memcpy(ptr + replacementLength, ptr + oldLength, (utf->length - ((ptr - utf->characteres) + oldLength)) * sizeof(wchar_t) + sizeof(wchar_t));
         memcpy(ptr, replacement, replacementLength * sizeof(wchar_t));
     }else
@@ -193,7 +193,7 @@ char string_utf16_replace(String_UTF16 *utf, wchar_t *old, wchar_t *replacement)
 
 void string_utf16_insert(String_UTF16 *utf, wchar_t *str) {
     size_t length = wcslen(str);
-    utf->characteres = realloc(utf->characteres, (utf->length + length) * sizeof(wchar_t) + sizeof(wchar_t));
+    utf->characteres = (wchar_t *) realloc(utf->characteres, (utf->length + length) * sizeof(wchar_t) + sizeof(wchar_t));
     memcpy(utf->characteres + length, utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
     memcpy(utf->characteres, str, length * sizeof(wchar_t));
 }
@@ -207,10 +207,10 @@ char string_utf16_remove_from_index(String_UTF16 *utf, unsigned long index) {
     if(index < utf->length) {
         utf->length = index;
         if(utf->length > 0)
-            utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+            utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
         else {
             free(utf->characteres);
-            utf->characteres = malloc(sizeof(wchar_t));
+            utf->characteres = (wchar_t *) malloc(sizeof(wchar_t));
         }
         utf->characteres[utf->length] = L'\0';
         return 1;
@@ -222,7 +222,7 @@ char string_utf16_remove_before_index(String_UTF16 *utf, unsigned long index) {
     if(index < utf->length) {
         utf->length -= index;
         memcpy(utf->characteres, &utf->characteres[index], utf->length * sizeof(wchar_t) + sizeof(wchar_t));
-        utf->characteres = realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+        utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
     }
     return 0;
 }
@@ -247,7 +247,7 @@ char string_utf16_copy_between(String_UTF16 *from, String_UTF16 *to, unsigned lo
     }
 
     to->length = end - begin;
-    to->characteres = malloc(to->length * sizeof(wchar_t) + sizeof(wchar_t));
+    to->characteres = (wchar_t *) malloc(to->length * sizeof(wchar_t) + sizeof(wchar_t));
     memcpy(to->characteres, &from->characteres[begin], (end - begin) * sizeof(wchar_t));
     to->characteres[to->length] = L'\0';
 
@@ -293,5 +293,27 @@ unsigned long string_utf16_rtrim(String_UTF16 *utf, wchar_t charactere) {
     if(number > 0)
         string_utf16_remove_from_index(utf, index + 1);
 
+    return number;
+}
+
+unsigned long string_utf16_lower(String_UTF16 *utf) {
+    unsigned long number = 0, i;
+    for(i = 0; i < utf->length; i++) {
+        if(utf->characteres[i] > 0x0040 && utf->characteres[i] < 0x005B) {
+            utf->characteres[i] += 32;
+            number++;
+        }
+    }
+    return number;
+}
+
+unsigned long string_utf16_upper(String_UTF16 *utf) {
+    unsigned long number = 0, i;
+    for(i = 0; i < utf->length; i++) {
+        if(utf->characteres[i] > 0x0060 && utf->characteres[i] < 0x007B) {
+            utf->characteres[i] -= 32;
+            number++;
+        }
+    }
     return number;
 }
