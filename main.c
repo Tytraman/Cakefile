@@ -10,9 +10,7 @@
 #include "include/memory/memory.h"
 #include "include/os/winapi.h"
 
-//TODO: refaire le message de la commande help
 
-// Vérifie les arguments passés au programme.
 char check_args(int argc, char **argv);
 unsigned long list_files(String_UTF16 ***listDest, String_UTF16 *src);
 unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src);
@@ -38,31 +36,33 @@ char check_args(int argc, char **argv) {
             mode = MODE_CLEAN;
         else if(strcasecmp(argv[1], "--help") == 0) {
             wprintf(
-                L"==========%S==========\n"
-                L"Lorsqu'aucun argument n'est passé, la commande est équivalente à `cake all`.\n\n"
+                L"==========[ %S ]==========\n"
+                L"Lorsqu'aucun argument n'est passé, la commande est équivalente à `cake all`.\n"
                 L"[ Arguments ]\n"
+                L"> clean : supprime tous les fichiers objets et l'exécutable.\n"
+                L"> all : compile les fichiers modifiés puis crée l'exécutable.\n"
+                L"> reset : équivalent de `cake clean` puis `cake all`.\n"
                 L"> --help : affiche ce message.\n"
                 L"> --version : affiche la version installée du programme.\n"
-                L"> --generate : génère un fichier `Cakefile`.\n"
-                L"> all : compile uniquement les fichiers sources modifiés ou dépendants d'headers modifiés, puis les link.\n"
-                L"> reset : supprime tous les fichiers objets, l'exécutable et recompile tout, puis les link.\n"
-                L"> clean : supprime tous les fichiers objets et l'exécutable.\n\n"
-                L"Le compilateur utilisé est gcc, alors assure toi de l'avoir installé et d'avoir la variable d'environnement !\n"
-                L"Les options suivantes doivent être mises dans un fichier `Cakefile` (sans extension).\n"
-                L"Le format est clé : valeur\n\n"
-                L"Liste des options :\n"
+                L"> --generate : génère un fichier `Cakefile` avec les options par défaut.\n\n"
+                
+                L"Liste des options du fichier `Cakefile` :\n"
                 L"[ Obligatoires ]\n"
-                L"- src_dir : dossier où se situent les fichiers sources.\n"
-                L"- obj_dir : dossier dans lequel les fichiers compilés logeront.\n"
-                L"- bin_dir : dossier dans lequel le fichier exécutable prendra ses aises.\n\n"
+                L"- language : langage de programmation utilisé.\n"
+                L"- src_dir : dossier contenant les fichiers sources.\n"
+                L"- obj_dir : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.\n"
+                L"- bin_dir : dossier où sera stocké l'exécutable final.\n"
+                L"- exec_name : nom de l'exécutable final.\n\n"
+
                 L"[ Optionnelles ]\n"
-                L"- exec_name : nom du fichier exécutable final (par défaut : prog.exe)\n"
                 L"- includes : liste des dossiers includes externes à inclure.\n"
                 L"- libs : liste des dossiers de librairies externes à inclure.\n"
                 L"- compile_options : options utilisées pendant la compilation.\n"
                 L"- link_options : options utilisées pendant le link des fichiers objets.\n"
-                L"- link_l : librairies externes à inclure.\n"
-                L"========================\n"
+                L"- link_l : librairies externes à inclure.\n\n"
+                
+                L"Pour plus d'infos, voir la page github : https://github.com/Tytraman/Cakefile\n"
+                L"============================\n"
                 , PROGRAM_NAME
             );
             return 0;

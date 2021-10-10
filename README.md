@@ -62,11 +62,15 @@ E:.
 `main.c` se situe dans le dossier root, et le dossier `src` contient tous les autres fichiers `.c`, ils peuvent être dans des sous-dossiers, du moment qu'ils sont dans le dossier `src`.<br><br>
 
 Liste des options du fichier `Cakefile` :
-- **`language`** : Langage de programmation utilisé, pour plus d'infos voir [**ici**](#head_languages).
+
+**[ Obligatoires ]**
+- **`language`** : langage de programmation utilisé, pour plus d'infos voir [**ici**](#head_languages).
 - **`src_dir`** : dossier contenant les fichiers sources.
 - **`obj_dir`** : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.
 - **`bin_dir`** : dossier où sera stocké l'exécutable final.
 - **`exec_name`** : nom de l'exécutable final.
+
+**[ Optionnelles ]**
 - **`includes`** : dossiers externes au projet à inclure lors de l'utilisation d'une ou plusieurs librairies. Pour ajouter plusieurs dossiers, il faut les séparer avec la barre oblique `|`. Exemple : `C:\Lib1\include|C:\Lib2\include|C:\Program Files\Lib\include`.
 - **`libs`** : comme `includes`, mais pour les fichiers compilés ou sources de la librairie. Exemple : `C:\Lib1\lib|C:\Lib2\lib|C:\Program Files\Lib\lib`.
 - **`compile_options`** : options à passer lors de la compilation, exemple : `-Wall`.
