@@ -30,12 +30,18 @@ unsigned long string_utf8_length(String_UTF8 *utf) {
             i--;
         }
     }
+    if(utf->bytes[utf->data.length - 1] == '\0')
+        length--;
     return length;
 }
 
 void string_utf8_to_utf16(String_UTF8 *src, String_UTF16 *dest) {
-    unsigned char *arrayEnd = &src->bytes[src->data.length];
+    unsigned char *arrayEnd = &src->bytes[src->data.length - 1];
     unsigned char *pStart = src->bytes, *startEncode, *endEncode;
+
+    while(arrayEnd >= pStart && *arrayEnd == '\0')
+        arrayEnd--;
+
     clean_string_utf16(dest);
     int bytes;
     unsigned short value;
@@ -45,8 +51,6 @@ void string_utf8_to_utf16(String_UTF8 *src, String_UTF16 *dest) {
         string_utf16_add_char(dest, value);
         pStart = endEncode;
     }
-    value = L'\0';
-    string_utf16_add_char(dest, value);
 }
 
 void string_utf8_index_by_index(unsigned char *pArrayStart, unsigned char *pArrayEnd, unsigned long utfIndex, unsigned char **pStart, unsigned char **pEnd, int *bytes) {
@@ -121,4 +125,19 @@ void array_char_to_string_utf8(unsigned char *src, String_UTF8 *dest, unsigned l
     dest->bytes = (unsigned char *) malloc(srcSize);
     memcpy(dest->bytes, src, srcSize);
     dest->length = string_utf8_length(dest);
+}
+
+void strutf8_print_hexa(String_UTF8 *utf) {
+    char count = 0;
+    unsigned long i;
+    for(i = 0; i < utf->data.length; i++) {
+        wprintf(L"%02x ", utf->bytes[i]);
+        if(count == 16) {
+            wprintf(L"\n");
+            count = 0;
+        }else count++;
+    }
+
+    if(count != 0)
+        wprintf(L"\n");
 }

@@ -12,6 +12,8 @@
     
 */
 
+#define NULL1 ((void *) 1)
+
 #define BUFF_SIZE 2048
 
 #define PROGRAM_STATUS_CAKEFILE_NOT_FOUND     1
@@ -26,6 +28,11 @@
 #define MODE_RESET 2
 #define MODE_LINK  3
 #define MODE_CLEAN 4
+
+#define C_LANGUAGE   1
+#define CPP_LANGUAGE 2
+
+extern char modeLanguage;
 
 extern const char    *VERSION;
 extern const char    *PROGRAM_NAME;

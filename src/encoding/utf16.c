@@ -147,6 +147,31 @@ wchar_t *string_utf16_search(String_UTF16 *utf, wchar_t *research) {
     return found;
 }
 
+wchar_t *strutf16_search_from_end(String_UTF16 *utf, wchar_t *research) {
+    size_t length = wcslen(research);
+    wchar_t *found = NULL;
+
+    unsigned long i, j, k;
+    for(i = utf->length - length; ; i--) {
+        if(utf->characteres[i] == research[0]) {
+            k = i + 1;
+            found = &utf->characteres[i];
+            for(j = 1; j < length; j++) {
+                if(utf->characteres[k++] != research[j]) {
+                    found = NULL;
+                    break;
+                }
+            }
+            if(found)
+                break;
+        }
+        if(i == 0)
+            break;
+    }
+
+    return found;
+}
+
 wchar_t *string_utf16_search_from(String_UTF16 *utf, wchar_t *research, unsigned long *index) {
     size_t length = wcslen(research);
     wchar_t *found = NULL;
@@ -168,8 +193,7 @@ wchar_t *string_utf16_search_from(String_UTF16 *utf, wchar_t *research, unsigned
     return found;
 }
 
-char string_utf16_replace(String_UTF16 *utf, wchar_t *old, wchar_t *replacement) {
-    wchar_t *ptr = string_utf16_search(utf, old);
+char __strutf16_replace(String_UTF16 *utf, wchar_t *ptr, wchar_t *old, wchar_t *replacement) {
     if(ptr == NULL) return 0;
 
     size_t oldLength = wcslen(old);
@@ -189,6 +213,14 @@ char string_utf16_replace(String_UTF16 *utf, wchar_t *old, wchar_t *replacement)
         memcpy(ptr, replacement, replacementLength * sizeof(wchar_t));
 
     return 1;
+}
+
+char string_utf16_replace(String_UTF16 *utf, wchar_t *old, wchar_t *replacement) {
+    return __strutf16_replace(utf, string_utf16_search(utf, old), old, replacement);
+}
+
+char strutf16_replace_from_end(String_UTF16 *utf, wchar_t *old, wchar_t *replacement) {
+    return __strutf16_replace(utf, strutf16_search_from_end(utf, old), old, replacement);
 }
 
 void string_utf16_insert(String_UTF16 *utf, wchar_t *str) {
@@ -267,7 +299,7 @@ unsigned long string_utf16_number_of(String_UTF16 *utf, wchar_t charactere) {
 
 wchar_t *string_utf16_find(String_UTF16 *utf, wchar_t research, unsigned long *index) {
     unsigned long i;
-
+    
     for(i = *index; i < utf->length; i++) {
         if(utf->characteres[i] == research) {
             *index = i;
@@ -316,4 +348,58 @@ unsigned long string_utf16_upper(String_UTF16 *utf) {
         }
     }
     return number;
+}
+
+void init_strutf16_reader(String_UTF16_Reader *reader, String_UTF16 *utf) {
+    reader->utf = utf;
+    reader->index = 0;
+    reader->lastPtr = NULL;
+}
+
+String_UTF16 *strutf16_getline(String_UTF16_Reader *reader) {
+    if(reader->lastPtr != NULL)
+        free_strutf16(reader->lastPtr);
+
+    if(reader->utf->length == 0 || reader->index > reader->utf->length) return NULL;
+
+    unsigned long index = reader->index;
+    if(string_utf16_find(reader->utf, L'\n', &index) == NULL)
+        index = reader->utf->length;
+    
+    char result;
+    if((result = reader->utf->characteres[index - 1] == L'\r'))
+        index--;
+
+    reader->lastPtr = (String_UTF16 *) malloc(sizeof(String_UTF16));
+    string_utf16_copy_between(reader->utf, reader->lastPtr, reader->index, index);
+    reader->index = index + (result ? 2 : 1);
+    return reader->lastPtr;
+}
+
+void free_strutf16(String_UTF16 *utf) {
+    free(utf->characteres);
+    free(utf);
+}
+
+void strutf16_print_hexa(String_UTF16 *utf) {
+    char count = 0;
+    unsigned long i;
+    for(i = 0; i < utf->length; i++) {
+        wprintf(L"%02x ", utf->characteres[i]);
+        if(count == 16) {
+            wprintf(L"\n");
+            count = 0;
+        }else count++;
+    }
+
+    if(count != 0)
+        wprintf(L"\n");
+}
+
+char strutf16_remove_index(String_UTF16 *utf, unsigned long index) {
+    if(index >= utf->length) return 0;
+
+    memcpy(&utf->characteres[index], &utf->characteres[index + 1], (utf->length - index) * sizeof(wchar_t));
+    utf->length--;
+    utf->characteres = (wchar_t *) realloc(utf->characteres, (utf->length + 1) * sizeof(wchar_t));
 }

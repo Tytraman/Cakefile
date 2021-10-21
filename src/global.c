@@ -8,6 +8,8 @@ const char *STDERR = "STDERR";
 const char *STDOUT = "STDOUT";
 const char *STDIN  = "STDIN";
 
+char modeLanguage = 0;
+
 char mode = MODE_ALL;
 
 String_UTF16 programFilename;

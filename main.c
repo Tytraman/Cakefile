@@ -124,27 +124,42 @@ unsigned long list_files(String_UTF16 ***listDest, String_UTF16 *src) {
 }
 
 unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src) {
+    // Il faut copier la source dans un tampon pour éviter de la modifier
     String_UTF16 srcCopy;
     create_string_utf16(&srcCopy);
     string_utf16_set_value(&srcCopy, src->characteres);
 
-    unsigned long i;
-    for(i = 0; i < srcCopy.length - 2; i++)
-        if(srcCopy.characteres[i] == L'.' && (srcCopy.characteres[i + 1] == L'c' || srcCopy.characteres[i + 1] == L'C') && srcCopy.characteres[i + 2] == L'\r')
-            srcCopy.characteres[i + 1] = L'o';
-
+    // Création d'une liste des fichiers sources
     unsigned long number = list_files(listDest, &srcCopy);
     free(srcCopy.characteres);
 
-    String_UTF16 u;
-    create_string_utf16(&u);
-    string_utf16_set_value(&u, o_objDir.value.characteres);
-    string_utf16_add_char(&u, L'\\');
-    for(i = 0; i < number; i++)
-        if(!string_utf16_replace((*listDest)[i], o_srcDir.value.characteres, o_objDir.value.characteres))
-            string_utf16_insert((*listDest)[i], u.characteres);
-    free(u.characteres);
+    // Dossier obj à ajouter devant le chemin de chaque fichier n'ayant pas le dossier src
+    String_UTF16 insertObj;
+    create_string_utf16(&insertObj);
+    string_utf16_set_value(&insertObj, o_objDir.value.characteres);
+    string_utf16_add_char(&insertObj, L'\\');
 
+    // Remplacement de l'extension par .o
+    // puis
+    // Ajout du dossier obj
+    unsigned long i;
+    for(i = 0; i < number; i++) {
+        switch(modeLanguage) {
+            case C_LANGUAGE:
+                strutf16_replace_from_end((*listDest)[i], L".c", L".o");
+                break;
+            case CPP_LANGUAGE:
+                if(!strutf16_replace_from_end((*listDest)[i], L".cpp", L".o"))
+                    strutf16_replace_from_end((*listDest)[i], L".c++", L".o");
+                break;
+            default:
+                break;
+        }
+        if(!string_utf16_replace((*listDest)[i], o_srcDir.value.characteres, o_objDir.value.characteres))
+            string_utf16_insert((*listDest)[i], insertObj.characteres);
+    }
+
+    free(insertObj.characteres);
     return number;
 }
 
@@ -414,6 +429,9 @@ char load_options(String_UTF16 *from) {
 
     load_option(L"link_l", from, &o_linkLibs);
 
+    if(o_objDir.value.characteres[o_objDir.value.length - 1] == L'\\' || o_objDir.value.characteres[o_objDir.value.length - 1] == L'/')
+        strutf16_remove_index(&o_objDir.value, o_objDir.value.length - 1);
+
     return 0;
 }
 
@@ -432,9 +450,11 @@ char selectCompiler() {
     create_string_utf16(&compiler);
     string_utf16_lower(&o_language.value);
     if(wcscmp(o_language.value.characteres, L"c") == 0) {
+        modeLanguage = C_LANGUAGE;
         string_utf16_set_value(&compiler, L"gcc");
         return 1;
     }else if(wcscmp(o_language.value.characteres, L"c++") == 0 || wcscmp(o_language.value.characteres, L"cpp") == 0) {
+        modeLanguage = CPP_LANGUAGE;
         string_utf16_set_value(&compiler, L"g++");
         return 2;
     }
@@ -494,18 +514,34 @@ int main(int argc, char **argv) {
     
     String_UTF16 exec;
     string_utf16_copy(&o_binDir.value, &exec);
-    string_utf16_add_char(&exec, L'\\');
+    if(o_binDir.value.characteres[o_binDir.value.length - 1] != L'\\' && o_binDir.value.characteres[o_binDir.value.length - 1] != L'/')
+        string_utf16_add_char(&exec, L'\\');
     string_utf16_add(&exec, o_execName.value.characteres);
 
     char commandResult;
 
     // On récupère la liste de tous les fichiers C du dossier et des sous dossiers.
     String_UTF16 out_dirC;
-    wchar_t *command_dirC = L"cmd /c chcp 65001>NUL & dir *.c /b/s";
-    if((commandResult = execute_command(command_dirC, &out_dirC, NULL, NULL)) != 0)
+    String_UTF16 dirCommand;
+    create_string_utf16(&dirCommand);
+    string_utf16_set_value(&dirCommand, L"cmd /c chcp 65001>NUL & dir /b/s *.c");
+
+    if(wcscmp(compiler.characteres, L"g++") == 0)
+        string_utf16_add(&dirCommand, L" *.cpp *.c++");
+
+    if((commandResult = execute_command(dirCommand.characteres, &out_dirC, NULL1, NULL)) != 0)
         fwprintf(stderr, L"Erreur lors de l'exécution de la commande : %d\n", commandResult);
 
-    // Liste des fichiers C, pour compiler.
+    free(dirCommand.characteres);
+
+    if(out_dirC.length == 0) {
+        fwprintf(stderr, L"Aucun fichier trouvé...\n");
+        free(out_dirC.characteres);
+        free_all();
+        return 1;
+    }
+
+    // Liste des fichiers sources, pour compiler.
     String_UTF16 **listC = NULL;
     unsigned long listCsize = 0;
 
@@ -513,8 +549,8 @@ int main(int argc, char **argv) {
     String_UTF16 **listO = NULL;
     unsigned long listOsize = 0;
 
-    if(out_dirC.characteres)
-        listOsize = list_o_files(&listO, &out_dirC);
+    
+    listOsize = list_o_files(&listO, &out_dirC);
 
     unsigned long *list = NULL;
     unsigned long needCompileNumber;
@@ -528,13 +564,22 @@ int main(int argc, char **argv) {
     switch(mode) {
         case MODE_CLEAN:{
             clean: ;
+            wprintf(L"Nettoyage...\n");
+            for(i = 0; i < listOsize; i++) {
+                wprintf(L"Suppression de \"%s\"...\n", listO[i]->characteres);
+                _wremove(listO[i]->characteres);
+            }
+            wprintf(L"Suppression de \"%s\"...\n", exec.characteres);
+            _wremove(exec.characteres);
+            // C'est pas safe du tout, ça supprime tout sans vérifier ce que c'est :
+            /*
             String_UTF16 cleanCommand;
             create_string_utf16(&cleanCommand);
             string_utf16_set_value(&cleanCommand, L"cmd /c if exist ");
             string_utf16_add(&cleanCommand, o_objDir.value.characteres);
             string_utf16_add(&cleanCommand, L" rd /q/s ");
             string_utf16_add(&cleanCommand, o_objDir.value.characteres);
-            wprintf(L"Nettoyage...\n");
+            
             if((result = execute_command(cleanCommand.characteres, NULL, NULL, NULL)) != 0) {
                 error_execute_command(cleanCommand.characteres, result);
                 free(cleanCommand.characteres);
@@ -544,7 +589,7 @@ int main(int argc, char **argv) {
                 return 1;
             }
             free(cleanCommand.characteres);
-            _wremove(exec.characteres);
+            */
             if(mode == MODE_RESET) goto reset;
             free(out_dirC.characteres);
             free(exec.characteres);
@@ -555,8 +600,8 @@ int main(int argc, char **argv) {
             goto clean;
             reset:
         case MODE_ALL:{
-            if(out_dirC.characteres)
-                listCsize = list_files(&listC, &out_dirC);
+            listCsize = list_files(&listC, &out_dirC);
+            free(out_dirC.characteres);
             mkdirs(o_objDir.value.characteres);
 
             needCompileNumber = check_who_must_compile(&list, listO, listC, listOsize);
@@ -570,12 +615,12 @@ int main(int argc, char **argv) {
             }
             startTime = get_current_time_millis();
             if(needCompileNumber) {
-                wprintf(L"==========Compilation==========\n");
+                wprintf(L"==========[ Compilation ]==========\n");
                 for(i = 0; i < needCompileNumber; i++) {
                     if(create_object(listC[list[i]], listO[list[i]], &error) == 0 && error == 0)
                         compileNumber++;
                 }
-                wprintf(L"===============================\n\n\n");
+                wprintf(L"===================================\n\n\n");
             }
         }
         case MODE_LINK:
@@ -583,9 +628,8 @@ int main(int argc, char **argv) {
                 startTime = get_current_time_millis();
             mkdirs(o_binDir.value.characteres);
             if(mode == MODE_LINK || (compileNumber > 0 && compileNumber == needCompileNumber)) {
-                wprintf(L"==========Link==========\n");
+                wprintf(L"==========[ Link ]==========\n");
                 
-
                 String_UTF16 linkCommand;
 
                 // gcc
@@ -632,7 +676,7 @@ int main(int argc, char **argv) {
                 else if(error == 0)
                     isLink = 1;
                 free(linkCommand.characteres);
-                wprintf(L"========================\n\n\n");
+                wprintf(L"============================\n\n\n");
             }
             break;
         default:
@@ -640,7 +684,7 @@ int main(int argc, char **argv) {
     }
 
     unsigned long long endTime = get_current_time_millis();
-    wprintf(L"==========Stats==========\n");
+    wprintf(L"==========[ Stats ]==========\n");
     switch(mode) {
         default:{
             wprintf(L"Aucune stat pour ce mode...\n");
@@ -663,7 +707,7 @@ int main(int argc, char **argv) {
             break;
         }
     }
-    wprintf(L"=========================\n\n");
+    wprintf(L"=============================\n\n");
 
     free(list);
 

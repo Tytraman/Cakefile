@@ -38,7 +38,9 @@ unsigned long file_buffer(unsigned char **buffer, const wchar_t *filepath) {
 char open_utf8_file(String_UTF8 *utf, const wchar_t *filepath) {
     unsigned long tempSize = file_buffer(&utf->bytes, filepath);
     if(tempSize == (unsigned long) -1) return 0;
-    utf->data.length = tempSize;
+    utf->data.length = tempSize + 1;
+    utf->bytes = realloc(utf->bytes, utf->data.length);
+    utf->bytes[utf->data.length - 1] = '\0';
     utf->length = string_utf8_length(utf);
     return 1;
 }

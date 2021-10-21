@@ -378,9 +378,9 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
         return 7;
     }
 
-    if(out)
+    if(out != NULL && out != NULL1)
         create_string_utf16(out);
-    if(err)
+    if(err != NULL && err != NULL1)
         create_string_utf16(err);
 
     size_t commandLength = wcslen(command);
@@ -477,21 +477,25 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
         if(std[currentResult] == std[0]) {
             if(bytesRead > 0) {
                 if(error) *error = 1;
-                if(err){
-                    tempSize = errBuffSize;
-                    errBuffSize += bytesRead;
-                    errBuff = (unsigned char *) realloc(errBuff, errBuffSize);
-                    memcpy(&errBuff[tempSize], buff, bytesRead);
+                if(err != NULL){
+                    if(err != NULL1) {
+                        tempSize = errBuffSize;
+                        errBuffSize += bytesRead;
+                        errBuff = (unsigned char *) realloc(errBuff, errBuffSize);
+                        memcpy(&errBuff[tempSize], buff, bytesRead);
+                    }
                 }else
                     WriteFile(GetStdHandle(STD_ERROR_HANDLE), buff, bytesRead, NULL, NULL);
             }
         }else if(std[currentResult] == std[1]) {
             if(bytesRead > 0) {
-                if(out) {
-                    tempSize = outBuffSize;
-                    outBuffSize += bytesRead;
-                    outBuff = (unsigned char *) realloc(outBuff, outBuffSize);
-                    memcpy(&outBuff[tempSize], buff, bytesRead);
+                if(out != NULL) {
+                    if(out != NULL1) {
+                        tempSize = outBuffSize;
+                        outBuffSize += bytesRead;
+                        outBuff = (unsigned char *) realloc(outBuff, outBuffSize);
+                        memcpy(&outBuff[tempSize], buff, bytesRead);
+                    }
                 }else
                     WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buff, bytesRead, NULL, NULL);
             }
@@ -499,7 +503,7 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
         overlapped.Offset += bytesRead;
     }
 
-    if(err) {
+    if(err != NULL && err != NULL1) {
         errBuff = (unsigned char *) realloc(errBuff, errBuffSize + 1);
         errBuff[errBuffSize] = '\0';
         String_UTF8 utf8;
@@ -509,7 +513,7 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
         free(utf8.bytes);
         free(errBuff);
     }
-    if(out) {
+    if(out != NULL && out != NULL1) {
         outBuff = (unsigned char *) realloc(outBuff, outBuffSize + 1);
         outBuff[outBuffSize] = '\0';
         String_UTF8 utf8;

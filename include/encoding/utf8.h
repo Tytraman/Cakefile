@@ -18,4 +18,6 @@ int string_utf8_decode(const unsigned char *src, char bytes);
 void string_utf8_index_by_index(unsigned char *pArrayStart, unsigned char *pArrayEnd, unsigned long utfIndex, unsigned char **pStart, unsigned char **pEnd, int *bytes);
 void array_char_to_string_utf8(unsigned char *src, String_UTF8 *dest, unsigned long srcSize);
 
+void strutf8_print_hexa(String_UTF8 *utf);
+
 #endif
