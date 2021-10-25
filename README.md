@@ -16,6 +16,7 @@ Liste des commandes :
 - **`cake clean`** : supprime le dossier contenant les fichiers `.o` et l'exécutable final.
 - **`cake all`** : compile les fichiers modifiés puis crée l'exécutable.
 - **`cake reset`** : équivalent de `cake clean` puis `cake all`.
+- **`cake link`** : link les fichiers objets pour créer l'exécutable.
 - **`cake --help`** : affiche l'aide.
 - **`cake --version`** : affiche la version installée du programme.
 
