@@ -1,6 +1,6 @@
 #include "../include/global.h"
 
-const char *VERSION             =  "2.1.0";
+const char *VERSION             =  "2.1.1";
 const char *PROGRAM_NAME        =  "Cake";
 const wchar_t *OPTIONS_FILENAME = L"Cakefile";
 
