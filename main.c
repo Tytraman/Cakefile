@@ -488,7 +488,7 @@ int main(int argc, char **argv) {
     String_UTF16 fileUtf16;
     create_string_utf16(&fileUtf16);
     if(!open_utf8_file(&fileUtf8, OPTIONS_FILENAME)) {
-        error_file_not_found(OPTIONS_FILENAME);
+        fwprintf(stderr, L"Le fichier Cakefile n'existe pas dans ce dossier, fais `cake --generate` pour en créer un !\n");
         return 1;
     }
 
