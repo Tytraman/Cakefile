@@ -5,41 +5,54 @@
 
 #include "../../include/error.h"
 
-DWORD get_file_size(const wchar_t *filename) {
+char get_file_size(const wchar_t *filename, unsigned long long *size) {
+    *size = 0;
     HANDLE hFile = CreateFileW(
         filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_POSIX_SEMANTICS, NULL
     );
-    if(hFile == NULL)
-        return -1;
-    DWORD fileSize = GetFileSize(hFile, NULL);
+    if(hFile == NULL) return 0;
+    DWORD highOrder;
+    DWORD lowOrder = GetFileSize(hFile, &highOrder);
     CloseHandle(hFile);
-    return fileSize;
+
+    if(lowOrder == INVALID_FILE_SIZE && GetLastError() != NO_ERROR) return 0;
+
+    *size = ((unsigned long long) highOrder << 8) | lowOrder;
+
+    return 1;
 }
 
-unsigned long file_buffer(unsigned char **buffer, const wchar_t *filepath) {
+char file_buffer(unsigned char **buffer, const wchar_t *filepath, unsigned long long *size) {
+    if(size) *size = 0;
+
     FILE *pFile = _wfopen(filepath, L"rb");
-    if(!pFile) return -1;
+    if(!pFile) return 0;
+
     unsigned char buff[2048];
-    size_t read;
-    unsigned long index = 0;
-    unsigned long i;
-    long filesize = get_file_size(filepath);
-    *buffer = (unsigned char *) malloc(filesize * sizeof(unsigned char));
+
+    unsigned long long i = 0;
+    unsigned long long fileSize;
+    unsigned long long read;
+    if(!get_file_size(filepath, &fileSize)) {
+        fclose(pFile);
+        return 0;
+    }
+    *buffer = (unsigned char *) malloc(fileSize * sizeof(unsigned char));
     while((read = fread(buff, 1, 2048, pFile)) > 0) {
-        for(i = 0; i < read; i++) {
-            (*buffer)[index] = buff[i];
-            index++;
-        }
+        memcpy((*buffer) + i, buff, read);
+        i += read;
     }
     fclose(pFile);
-    return index;
+    if(size) *size = fileSize;
+    return 1;
 }
 
 char open_utf8_file(String_UTF8 *utf, const wchar_t *filepath) {
-    unsigned long tempSize = file_buffer(&utf->bytes, filepath);
-    if(tempSize == (unsigned long) -1) return 0;
-    utf->data.length = tempSize + 1;
-    utf->bytes = realloc(utf->bytes, utf->data.length);
+    unsigned long long size;
+    if(!file_buffer(&utf->bytes, filepath, &size)) return 0;
+
+    utf->data.length = size + 1;
+    utf->bytes = (unsigned char *) realloc(utf->bytes, utf->data.length);
     utf->bytes[utf->data.length - 1] = '\0';
     utf->length = string_utf8_length(utf);
     return 1;

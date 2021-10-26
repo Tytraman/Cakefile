@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <windows.h>
 
+char file_buffer(unsigned char **buffer, const wchar_t *filepath, unsigned long long *size);
+
 /*
     Ouvre un fichier encodé en UTF-8 et le stock dans un `String_UTF8`.
 
@@ -13,7 +15,7 @@
 */
 char open_utf8_file(String_UTF8 *utf, const wchar_t *filepath);
 
-DWORD get_file_size(const wchar_t *filename);
+char get_file_size(const wchar_t *filename, unsigned long long *size);
 
 char mkdirs(wchar_t *path);
 

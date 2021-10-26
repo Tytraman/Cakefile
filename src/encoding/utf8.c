@@ -39,13 +39,13 @@ void string_utf8_to_utf16(String_UTF8 *src, String_UTF16 *dest) {
     unsigned char *arrayEnd = &src->bytes[src->data.length - 1];
     unsigned char *pStart = src->bytes, *startEncode, *endEncode;
 
-    while(arrayEnd >= pStart && *arrayEnd == '\0')
+    while(arrayEnd > pStart && *arrayEnd == '\0')
         arrayEnd--;
 
     clean_string_utf16(dest);
     int bytes;
     unsigned short value;
-    while(pStart < arrayEnd) {
+    while(pStart <= arrayEnd) {
         string_utf8_index_by_index(pStart, arrayEnd, 0L, &startEncode, &endEncode, &bytes);
         value = string_utf8_decode(startEncode, bytes);
         string_utf16_add_char(dest, value);
@@ -55,11 +55,11 @@ void string_utf8_to_utf16(String_UTF8 *src, String_UTF16 *dest) {
 
 void string_utf8_index_by_index(unsigned char *pArrayStart, unsigned char *pArrayEnd, unsigned long utfIndex, unsigned char **pStart, unsigned char **pEnd, int *bytes) {
     unsigned long currentUtfIndex = 0UL;
-    while(pArrayStart < pArrayEnd) {
+    while(pArrayStart <= pArrayEnd) {
         if((*pArrayStart & 0b10000000) == 0) {              // Si c'est un caractère ASCII.
             if(currentUtfIndex == utfIndex) {
                 *pStart = pArrayStart;
-                *pEnd = &pArrayStart[1];
+                *pEnd = pArrayStart + 1;
                 if(bytes) *bytes = 1;
                 return;
             }
@@ -68,7 +68,7 @@ void string_utf8_index_by_index(unsigned char *pArrayStart, unsigned char *pArra
         }else if((*pArrayStart & 0b11000000) == 192) {      // Si c'est le début d'un caractère encodé UTF-8.
             unsigned char *saveStart = pArrayStart;
             pArrayStart++;
-            while(pArrayStart < pArrayEnd && (*pArrayStart & 0b11000000) == 128)    // Tant que c'est un octet encodé.
+            while(pArrayStart <= pArrayEnd && (*pArrayStart & 0b11000000) == 128)    // Tant que c'est un octet encodé.
                 pArrayStart++;
             if(currentUtfIndex == utfIndex) {
                 *pStart = saveStart;

@@ -46,52 +46,36 @@ void string_utf16_add_char(String_UTF16 *utf, wchar_t c) {
 }
 
 char string_utf16_key_value(const wchar_t *key, String_UTF16 *src, String_UTF16 *dest) {
-    unsigned long valueLength = 0;
-    size_t keyLength = wcslen(key);
-    unsigned long newSize = src->length - keyLength + 1;
-    unsigned long i, j;
-    wchar_t *found;
-    for(i = 0; i < newSize; i++) {
-        if(key[0] == src->characteres[i]) {
-            found = &src->characteres[i];
-            for(j = 1; j < keyLength; j++) {
-                i++;
-                found++;
-                if(key[j] != *found) {
-                    found = NULL;
-                    break;
-                }
-            }
-            if(found) {
-                i++;
-                found++;
-                while(i < src->length && *found != L':') {
-                    if(*found == L'\r' || *found == L'\n') return 0;
-                    i++;
-                    found++;
-                }
-                if(i == src->length) return 0;
-                i++;
-                found++;
-                while(i < src->length && (*found == L' ' || *found == L'\t')) {
-                    i++;
-                    found++;
-                }
-                if(*found == L'\r' || *found == L'\n') return 0;
-                if(i == src->length)                   return 0;
-                while(i < src->length && src->characteres[i] != L'\r' && src->characteres[i] != L'\n') {
-                    i++;
-                    valueLength++;
-                }
-                dest->length = valueLength;
-                dest->characteres = (wchar_t *) malloc(valueLength * sizeof(wchar_t) + sizeof(wchar_t));
-                memcpy(dest->characteres, found, valueLength * sizeof(wchar_t));
-                dest->characteres[valueLength] = L'\0';
-                return 1;
-            }
-        }
+    String_UTF16_Reader reader;
+    init_strutf16_reader(&reader, src);
+    
+    String_UTF16 *line;
+    wchar_t *ptr = NULL;
+
+    while(ptr == NULL && (line = strutf16_getline(&reader)) != NULL)
+        ptr = string_utf16_search(line, key);
+
+    if(ptr == NULL) return 0;
+
+    unsigned long index = wcslen(key);
+    ptr = string_utf16_search_from(line, L":", &index);
+    if(ptr == NULL) {
+        free_strutf16(line);
+        return 0;
     }
-    return 0;
+
+    while(index++ < line->length && (*ptr == L' ' || *ptr == L'\t'));
+
+    if(index != line->length)
+        string_utf16_copy_between(line, dest, index, line->length);
+    else {
+        string_utf16_empty(dest);
+        free_strutf16(line);
+        return 0;
+    }
+
+    free_strutf16(line);
+    return 1;
 }
 
 void string_utf16_empty(String_UTF16 *utf) {
@@ -126,8 +110,11 @@ char string_utf16_remove(String_UTF16 *utf, wchar_t *str) {
     return 1;
 }
 
-wchar_t *string_utf16_search(String_UTF16 *utf, wchar_t *research) {
+wchar_t *string_utf16_search(String_UTF16 *utf, const wchar_t *research) {
+    if(utf->length == 0) return NULL;
     size_t length = wcslen(research);
+    if(length > utf->length) return NULL;
+    
     wchar_t *found = NULL;
 
     unsigned long i, j;

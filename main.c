@@ -491,6 +491,7 @@ int main(int argc, char **argv) {
         error_file_not_found(OPTIONS_FILENAME);
         return 1;
     }
+
     string_utf8_to_utf16(&fileUtf8, &fileUtf16);
     free(fileUtf8.bytes);
 
@@ -524,7 +525,9 @@ int main(int argc, char **argv) {
     String_UTF16 out_dirC;
     String_UTF16 dirCommand;
     create_string_utf16(&dirCommand);
-    string_utf16_set_value(&dirCommand, L"cmd /c chcp 65001>NUL & dir /b/s *.c");
+
+    // Je fais chcp 65001>NUL car y a un bug et des fois la commande s'exécute pas
+    string_utf16_set_value(&dirCommand, L"cmd /c chcp 65001>NUL & chcp 65001>NUL & chcp 65001>NUL & dir /b/s *.c");
 
     if(wcscmp(compiler.characteres, L"g++") == 0)
         string_utf16_add(&dirCommand, L" *.cpp *.c++");

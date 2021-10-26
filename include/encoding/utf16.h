@@ -73,7 +73,7 @@ void free_strutf16(String_UTF16 *utf);
 
 /* ===== Recherches ===== */
 
-wchar_t *string_utf16_search(String_UTF16 *utf, wchar_t *research);
+wchar_t *string_utf16_search(String_UTF16 *utf, const wchar_t *research);
 wchar_t *strutf16_search_from_end(String_UTF16 *utf, wchar_t *research);
 wchar_t *string_utf16_find(String_UTF16 *utf, wchar_t research, unsigned long *index);
 wchar_t *string_utf16_search_from(String_UTF16 *utf, wchar_t *research, unsigned long *index);
