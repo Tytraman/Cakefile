@@ -13,7 +13,7 @@ Pour utiliser la commande `cake`, un fichier `Cakefile` doit être présent dans
 La commande `cake --generate` permet de générer ce fichier avec les options par défaut.<br><br>
 Liste des commandes :
 
-- **`cake clean`** : supprime le dossier contenant les fichiers `.o` et l'exécutable final.
+- **`cake clean`** : supprime les fichiers objets et l'exécutable final.
 - **`cake all`** : compile les fichiers modifiés puis crée l'exécutable.
 - **`cake reset`** : équivalent de `cake clean` puis `cake all`.
 - **`cake link`** : link les fichiers objets pour créer l'exécutable.
