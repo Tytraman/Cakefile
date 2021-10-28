@@ -150,7 +150,8 @@ unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src) {
                 break;
             case CPP_LANGUAGE:
                 if(!strutf16_replace_from_end((*listDest)[i], L".cpp", L".o"))
-                    strutf16_replace_from_end((*listDest)[i], L".c++", L".o");
+                    if(!strutf16_replace_from_end((*listDest)[i], L".c++", L".o"))
+                        strutf16_replace_from_end((*listDest)[i], L".c", L".o");
                 break;
             default:
                 break;
