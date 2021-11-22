@@ -316,7 +316,7 @@ char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
     wprintf(L"%s\n", command.characteres);
 
     char result;
-    if((result = execute_command(command.characteres, NULL, NULL, error)) != 0)
+    if((result = execute_command(command.characteres, NULL, NULL, error, 1, 1)) != 0)
         error_execute_command(command.characteres, result);
     free(command.characteres);
     return result;
@@ -533,8 +533,10 @@ int main(int argc, char **argv) {
     if(wcscmp(compiler.characteres, L"g++") == 0)
         string_utf16_add(&dirCommand, L" *.cpp *.c++");
 
-    if((commandResult = execute_command(dirCommand.characteres, &out_dirC, NULL1, NULL)) != 0)
+    if((commandResult = execute_command(dirCommand.characteres, &out_dirC, NULL, NULL, 0, 0)) != 0)
         fwprintf(stderr, L"Erreur lors de l'exécution de la commande : %d\n", commandResult);
+    
+    //wprintf(L"Résultat :\n%s\n", out_dirC.characteres);
 
     free(dirCommand.characteres);
 
@@ -553,12 +555,17 @@ int main(int argc, char **argv) {
     String_UTF16 **listO = NULL;
     unsigned long listOsize = 0;
 
-    
     listOsize = list_o_files(&listO, &out_dirC);
+    unsigned long i;
+
+    /*
+    for(i = 0; i < listOsize; i++)
+        wprintf(L"%s\n", listO[i]->characteres);
+    */
 
     unsigned long *list = NULL;
     unsigned long needCompileNumber;
-    unsigned long i;
+    
 
     unsigned long long startTime;
     unsigned long compileNumber = 0;
@@ -675,7 +682,7 @@ int main(int argc, char **argv) {
 
                 wprintf(L"%s\n", linkCommand.characteres);
 
-                if((result = execute_command(linkCommand.characteres, NULL, NULL, &error)) != 0)
+                if((result = execute_command(linkCommand.characteres, NULL, NULL, &error, 1, 1)) != 0)
                     error_execute_command(linkCommand.characteres, result);
                 else if(error == 0)
                     isLink = 1;
@@ -707,7 +714,10 @@ int main(int argc, char **argv) {
             break;
         }
         case MODE_LINK:{
-            wprintf(L"Linkés en %llu ms.\n", endTime - startTime);
+            if(isLink)
+                wprintf(L"Linkés en %llu ms.\n", endTime - startTime);
+            else
+                wprintf(L"Rien n'a changé...\n");
             break;
         }
     }
