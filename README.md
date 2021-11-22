@@ -25,48 +25,10 @@ Pour éviter de taper `cake all` à chaque fois, tu peux simplement taper **`cak
 <br>
 
 ## Configuration
-Le fichier `Cakefile` contient toutes les options que le programme utilise, c'est le **pilier principal**, sans lui, rien ne va, alors il est très important de bien comprendre comment s'en servir.<br>
-En utilisant `cake`, une certaine structure de fichiers doit être respectée, les fichiers sources **DOIVENT** se situer dans le dossier root du projet **ET/OU** dans un sous-dossier contenant les fichiers sources.
-
-Voici un exemple :
-```txt
-E:.
-│   Cakefile
-│   main.c
-│   README.md
-│
-├───bin
-│       cake.exe
-│
-├───include
-│   │   error.h
-│   │   global.h
-│   │
-│   ├───array
-│   │       base_array.h
-│   │
-│   └───encoding
-│           utf16.h
-│           utf8.h
-│           
-└───src
-    │   error.c
-    │   global.c
-    │   
-    ├───array
-    │       base_array.c
-    │       
-    └───encoding
-            utf16.c
-            utf8.c
-```
-`main.c` se situe dans le dossier root, et le dossier `src` contient tous les autres fichiers `.c`, ils peuvent être dans des sous-dossiers, du moment qu'ils sont dans le dossier `src`.<br><br>
-
 Liste des options du fichier `Cakefile` :
 
 **[ Obligatoires ]**
 - **`language`** : langage de programmation utilisé, pour plus d'infos voir [**les langages supportés**](#head_languages).
-- **`src_dir`** : dossier contenant les fichiers sources.
 - **`obj_dir`** : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.
 - **`bin_dir`** : dossier où sera stocké l'exécutable final.
 - **`exec_name`** : nom de l'exécutable final.
