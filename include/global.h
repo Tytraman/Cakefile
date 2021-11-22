@@ -50,7 +50,6 @@ extern String_UTF16 pwd;
 extern char programStatus;
 
 extern Option o_language;       // Obligatoire
-extern Option o_srcDir;         // Obligatoire
 extern Option o_objDir;         // Obligatoire
 extern Option o_binDir;         // Obligatoire
 extern Option o_execName;       // Obligatoire

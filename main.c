@@ -137,7 +137,7 @@ unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src) {
     String_UTF16 insertObj;
     create_string_utf16(&insertObj);
     string_utf16_set_value(&insertObj, o_objDir.value.characteres);
-    string_utf16_add_char(&insertObj, L'\\');
+    string_utf16_add_char(&insertObj, L'\\');  // obj\ 
 
     // Remplacement de l'extension par .o
     // puis
@@ -156,7 +156,26 @@ unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src) {
             default:
                 break;
         }
+        /*
+                Ancien code.
+
+                Avant, le dossier source était remplacé par le dossier objet, mais
+                ça créait un problème facilement patchable, mais après réfléxion, je trouve
+                ce principe un peu nul puisqu'il nécessite de suivre une directive bien précise.
+
+                Le problème était que, le remplacement se produisait comme ceci :
+                    [ok] src\test\oui.o    -> obj\test\oui.o
+                    [ok] sub\folder\argh.o -> obj\sub\folder\non.o
+                    [euh ?] dir\src\hmm.o  -> dir\obj\hmm.o
+                
+                src était remplacé par obj sans vérifier que src soit le premier dossier.
+        */
+        /*
         if(!string_utf16_replace((*listDest)[i], o_srcDir.value.characteres, o_objDir.value.characteres))
+            string_utf16_insert((*listDest)[i], insertObj.characteres);
+        */
+
+        if(!strutf16_start_with((*listDest)[i], o_objDir.value.characteres))
             string_utf16_insert((*listDest)[i], insertObj.characteres);
     }
 
@@ -377,7 +396,6 @@ void combine_libs_path() {
 }
 
 char load_options(String_UTF16 *from) {
-    init_option(&o_srcDir);
     init_option(&o_objDir);
     init_option(&o_binDir);
     init_option(&o_includes);
@@ -398,24 +416,19 @@ char load_options(String_UTF16 *from) {
         return 1;
     }
 
-    if(!load_option(key_srcDir, from, &o_srcDir)) {
-        error_key_not_found(key_srcDir);
-        return 2;
-    }
-
     if(!load_option(key_objDir, from, &o_objDir)) {
         error_key_not_found(key_objDir);
-        return 3;
+        return 2;
     }
 
     if(!load_option(key_binDir, from, &o_binDir)) {
         error_key_not_found(key_binDir);
-        return 4;
+        return 3;
     }
 
     if(!load_option(key_execName, from, &o_execName)) {
         error_key_not_found(key_execName);
-        return 5;
+        return 4;
     }
 
     if(load_option(L"includes", from, &o_includes))
@@ -438,12 +451,12 @@ char load_options(String_UTF16 *from) {
 
 void unload_options() {
     Option *options[] = {
-        &o_language, &o_srcDir, &o_objDir, &o_binDir, &o_includes,
+        &o_language, &o_objDir, &o_binDir, &o_includes,
         &o_libs, &o_compileOptions, &o_linkOptions, &o_linkLibs, &o_execName
     };
 
     unsigned int i;
-    for(i = 0; i < 10; i++)
+    for(i = 0; i < (unsigned int) (sizeof(options) / sizeof(Option *)); i++)
         unload_option(options[i]);
 }
 

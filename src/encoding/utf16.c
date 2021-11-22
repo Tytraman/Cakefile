@@ -390,3 +390,14 @@ char strutf16_remove_index(String_UTF16 *utf, unsigned long index) {
     utf->length--;
     utf->characteres = (wchar_t *) realloc(utf->characteres, (utf->length + 1) * sizeof(wchar_t));
 }
+
+char strutf16_start_with(String_UTF16 *utf, wchar_t *str) {
+    unsigned long size = wcslen(str);
+    if(size > utf->length)
+        return 0;
+    unsigned long i;
+    for(i = 0; i < size; i++)
+        if(utf->characteres[i] != str[i])
+            return 0;
+    return 1;
+}

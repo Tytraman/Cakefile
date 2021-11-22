@@ -18,7 +18,6 @@ String_UTF16 pwd;
 char programStatus = 0;
 
 Option o_language;
-Option o_srcDir;
 Option o_objDir;
 Option o_binDir;
 Option o_includes;

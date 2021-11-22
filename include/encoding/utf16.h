@@ -79,6 +79,7 @@ wchar_t *string_utf16_find(String_UTF16 *utf, wchar_t research, unsigned long *i
 wchar_t *string_utf16_search_from(String_UTF16 *utf, wchar_t *research, unsigned long *index);
 char string_utf16_key_value(const wchar_t *key, String_UTF16 *src, String_UTF16 *dest);
 unsigned long string_utf16_number_of(String_UTF16 *utf, wchar_t charactere);
+char strutf16_start_with(String_UTF16 *utf, wchar_t *str);
 
 
 
