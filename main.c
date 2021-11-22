@@ -49,7 +49,6 @@ char check_args(int argc, char **argv) {
                 L"Liste des options du fichier `Cakefile` :\n"
                 L"[ Obligatoires ]\n"
                 L"- language : langage de programmation utilisé.\n"
-                L"- src_dir : dossier contenant les fichiers sources.\n"
                 L"- obj_dir : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.\n"
                 L"- bin_dir : dossier où sera stocké l'exécutable final.\n"
                 L"- exec_name : nom de l'exécutable final.\n\n"
@@ -73,7 +72,6 @@ char check_args(int argc, char **argv) {
             if(GetFileAttributesW(OPTIONS_FILENAME) == 0xffffffff) {
                 unsigned char defaultCakefile[] =
                     "language : c\n\n"
-                    "src_dir : src\n"
                     "obj_dir : obj\n"
                     "bin_dir : bin\n\n"
 
@@ -87,7 +85,7 @@ char check_args(int argc, char **argv) {
 
                     "link_l : ";
                 FILE *pCakefile = _wfopen(OPTIONS_FILENAME, L"wb");
-                fwrite(defaultCakefile, 1, 145, pCakefile);
+                fwrite(defaultCakefile, 1, 131, pCakefile);
                 fclose(pCakefile);
             }else
                 fwprintf(stderr, L"[%S] Il existe déjà un fichier `%s`.\n", PROGRAM_NAME, OPTIONS_FILENAME);
