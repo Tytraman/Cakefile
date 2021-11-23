@@ -46,6 +46,7 @@ unsigned int __stdcall stdout_thread(void *pParam) {
         }
     }
     SetEvent(data->event);
+    _endthreadex(0);
 }
 
 unsigned int __stdcall stderr_thread(void *pParam) {
@@ -763,6 +764,9 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     WaitForSingleObject(dataStdout.event, INFINITE);
     WaitForSingleObject(dataStderr.event, INFINITE);
 
+    CloseHandle(stdoutThread);
+    CloseHandle(stderrThread);
+
     // Stockage de stdout dans le String_UTF16
     if(out != NULL) {
         dataStdout.buff = (unsigned char *) realloc(dataStdout.buff, dataStdout.buffSize + 1);
@@ -785,10 +789,11 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
         free(utf8.bytes);
     }
 
-    if(mode == 0 || mode == 2) {
+    if(modeStdout == 0 || modeStdout == 2)
         free(dataStdout.buff);
+
+    if(modeStderr == 0 || modeStderr == 2)
         free(dataStderr.buff);
-    }
 
     CloseHandle(childStdin_wr);
     CloseHandle(dataStdout.pipe);

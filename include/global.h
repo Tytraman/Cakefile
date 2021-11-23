@@ -12,8 +12,6 @@
     
 */
 
-#define NULL1 ((void *) 1)
-
 #define BUFF_SIZE 2048
 
 #define PROGRAM_STATUS_CAKEFILE_NOT_FOUND     1
@@ -32,7 +30,7 @@
 #define C_LANGUAGE   1
 #define CPP_LANGUAGE 2
 
-extern char modeLanguage;
+extern char g_ModeLanguage;
 
 extern const char    *VERSION;
 extern const char    *PROGRAM_NAME;
@@ -42,22 +40,25 @@ extern const char *STDERR;
 extern const char *STDOUT;
 extern const char *STDIN;
 
-extern char mode;
+extern char g_Mode;
+extern BOOL g_AutoExec;
 
 extern String_UTF16 programFilename;
 extern String_UTF16 pwd;
 
 extern char programStatus;
 
-extern Option o_language;       // Obligatoire
-extern Option o_objDir;         // Obligatoire
-extern Option o_binDir;         // Obligatoire
-extern Option o_execName;       // Obligatoire
-extern Option o_includes;
-extern Option o_libs;
-extern Option o_compileOptions;
-extern Option o_linkOptions;
-extern Option o_linkLibs;
+extern Option o_Language;       // Obligatoire
+extern Option o_ObjDir;         // Obligatoire
+extern Option o_BinDir;         // Obligatoire
+extern Option o_ExecName;       // Obligatoire
+extern Option o_Includes;
+extern Option o_Libs;
+extern Option o_CompileOptions;
+extern Option o_LinkOptions;
+extern Option o_LinkLibs;
+extern Option o_AutoExec;
+extern Option o_ExecArgs;
 
 extern String_UTF16 compiler;
 

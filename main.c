@@ -27,13 +27,13 @@ void free_all();
 char check_args(int argc, char **argv) {
     if(argc > 1) {
         if(strcasecmp(argv[1], "all") == 0)
-            mode = MODE_ALL;
+            g_Mode = MODE_ALL;
         else if(strcasecmp(argv[1], "reset") == 0)
-            mode = MODE_RESET;
+            g_Mode = MODE_RESET;
         else if(strcasecmp(argv[1], "link") == 0)
-            mode = MODE_LINK;
+            g_Mode = MODE_LINK;
         else if(strcasecmp(argv[1], "clean") == 0)
-            mode = MODE_CLEAN;
+            g_Mode = MODE_CLEAN;
         else if(strcasecmp(argv[1], "--help") == 0) {
             wprintf(
                 L"==========[ %S ]==========\n"
@@ -58,7 +58,9 @@ char check_args(int argc, char **argv) {
                 L"- libs : liste des dossiers de librairies externes à inclure.\n"
                 L"- compile_options : options utilisées pendant la compilation.\n"
                 L"- link_options : options utilisées pendant le link des fichiers objets.\n"
-                L"- link_l : librairies externes à inclure.\n\n"
+                L"- link_l : librairies externes à inclure.\n"
+                L"- auto_exec : définie si le programme s'exécute automatiquement après sa génération. (true/false)\n"
+                L"- exec_args : liste des arguments à passer si auto_exec est activé ou si la commande `cake exec` a été tapée.\n\n"
                 
                 L"Pour plus d'infos, voir la page github : https://github.com/Tytraman/Cakefile\n"
                 L"============================\n"
@@ -83,9 +85,11 @@ char check_args(int argc, char **argv) {
                     "compile_options : \n"
                     "link_options : \n\n"
 
-                    "link_l : ";
+                    "link_l : \n\n"
+                    "auto_exec : false\n"
+                    "exec_args :";
                 FILE *pCakefile = _wfopen(OPTIONS_FILENAME, L"wb");
-                fwrite(defaultCakefile, 1, 131, pCakefile);
+                fwrite(defaultCakefile, 1, 162, pCakefile);
                 fclose(pCakefile);
             }else
                 fwprintf(stderr, L"[%S] Il existe déjà un fichier `%s`.\n", PROGRAM_NAME, OPTIONS_FILENAME);
@@ -134,7 +138,7 @@ unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src) {
     // Dossier obj à ajouter devant le chemin de chaque fichier n'ayant pas le dossier src
     String_UTF16 insertObj;
     create_string_utf16(&insertObj);
-    string_utf16_set_value(&insertObj, o_objDir.value.characteres);
+    string_utf16_set_value(&insertObj, o_ObjDir.value.characteres);
     string_utf16_add_char(&insertObj, L'\\');  // obj\ 
 
     // Remplacement de l'extension par .o
@@ -142,7 +146,7 @@ unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src) {
     // Ajout du dossier obj
     unsigned long i;
     for(i = 0; i < number; i++) {
-        switch(modeLanguage) {
+        switch(g_ModeLanguage) {
             case C_LANGUAGE:
                 strutf16_replace_from_end((*listDest)[i], L".c", L".o");
                 break;
@@ -173,7 +177,7 @@ unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src) {
             string_utf16_insert((*listDest)[i], insertObj.characteres);
         */
 
-        if(!strutf16_start_with((*listDest)[i], o_objDir.value.characteres))
+        if(!strutf16_start_with((*listDest)[i], o_ObjDir.value.characteres))
             string_utf16_insert((*listDest)[i], insertObj.characteres);
     }
 
@@ -319,16 +323,16 @@ char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
     // gcc -c "fichier.c" -o "fichier.o"
     string_utf16_add_char(&command, L'\"');
 
-    if(o_compileOptions.loaded) {
+    if(o_CompileOptions.loaded) {
         string_utf16_add_char(&command, L' ');
-        string_utf16_add(&command, o_compileOptions.value.characteres);
+        string_utf16_add(&command, o_CompileOptions.value.characteres);
     }
 
-    if(o_includes.loaded)
-        string_utf16_add(&command, o_includes.value.characteres);
+    if(o_Includes.loaded)
+        string_utf16_add(&command, o_Includes.value.characteres);
 
-    if(o_libs.loaded)
-        string_utf16_add(&command, o_libs.value.characteres);
+    if(o_Libs.loaded)
+        string_utf16_add(&command, o_Libs.value.characteres);
 
     wprintf(L"%s\n", command.characteres);
 
@@ -343,25 +347,25 @@ void combine_includes_path() {
     unsigned long begin = 0, end = 0;
                     
     String_UTF16 copy, temp;
-    string_utf16_copy(&o_includes.value, &copy);
-    string_utf16_empty(&o_includes.value);
+    string_utf16_copy(&o_Includes.value, &copy);
+    string_utf16_empty(&o_Includes.value);
 
     while(string_utf16_find(&copy, L'|', &end)) {
         string_utf16_copy_between(&copy, &temp, begin, end);
         string_utf16_rtrim(&temp, L'\\');
         end++;
-        string_utf16_add(&o_includes.value, L" -I \"");
-        string_utf16_add(&o_includes.value, temp.characteres);
-        string_utf16_add_char(&o_includes.value, L'\"');
+        string_utf16_add(&o_Includes.value, L" -I \"");
+        string_utf16_add(&o_Includes.value, temp.characteres);
+        string_utf16_add_char(&o_Includes.value, L'\"');
         free(temp.characteres);
         begin = end;
     }
 
     string_utf16_copy_between(&copy, &temp, begin, copy.length);
     string_utf16_rtrim(&temp, L'\\');
-    string_utf16_add(&o_includes.value, L" -I \"");
-    string_utf16_add(&o_includes.value, temp.characteres);
-    string_utf16_add_char(&o_includes.value, L'\"');
+    string_utf16_add(&o_Includes.value, L" -I \"");
+    string_utf16_add(&o_Includes.value, temp.characteres);
+    string_utf16_add_char(&o_Includes.value, L'\"');
     free(temp.characteres);
     free(copy.characteres);
 }
@@ -370,87 +374,103 @@ void combine_libs_path() {
     unsigned long begin = 0, end = 0;
                     
     String_UTF16 copy, temp;
-    string_utf16_copy(&o_libs.value, &copy);
-    string_utf16_empty(&o_libs.value);
+    string_utf16_copy(&o_Libs.value, &copy);
+    string_utf16_empty(&o_Libs.value);
 
     while(string_utf16_find(&copy, L'|', &end)) {
         string_utf16_copy_between(&copy, &temp, begin, end);
         string_utf16_rtrim(&temp, L'\\');
         end++;
-        string_utf16_add(&o_libs.value, L" -L \"");
-        string_utf16_add(&o_libs.value, temp.characteres);
-        string_utf16_add_char(&o_libs.value, L'\"');
+        string_utf16_add(&o_Libs.value, L" -L \"");
+        string_utf16_add(&o_Libs.value, temp.characteres);
+        string_utf16_add_char(&o_Libs.value, L'\"');
         free(temp.characteres);
         begin = end;
     }
 
     string_utf16_copy_between(&copy, &temp, begin, copy.length);
     string_utf16_rtrim(&temp, L'\\');
-    string_utf16_add(&o_libs.value, L" -L \"");
-    string_utf16_add(&o_libs.value, temp.characteres);
-    string_utf16_add_char(&o_libs.value, L'\"');
+    string_utf16_add(&o_Libs.value, L" -L \"");
+    string_utf16_add(&o_Libs.value, temp.characteres);
+    string_utf16_add_char(&o_Libs.value, L'\"');
     free(temp.characteres);
     free(copy.characteres);
 }
 
 char load_options(String_UTF16 *from) {
-    init_option(&o_objDir);
-    init_option(&o_binDir);
-    init_option(&o_includes);
-    init_option(&o_libs);
-    init_option(&o_compileOptions);
-    init_option(&o_linkOptions);
-    init_option(&o_linkLibs);
-    init_option(&o_execName);
+    init_option(&o_ObjDir);
+    init_option(&o_BinDir);
+    init_option(&o_Includes);
+    init_option(&o_Libs);
+    init_option(&o_CompileOptions);
+    init_option(&o_LinkOptions);
+    init_option(&o_LinkLibs);
+    init_option(&o_ExecName);
+    init_option(&o_AutoExec);
+    init_option(&o_ExecArgs);
 
-    const wchar_t *key_language = L"language";
-    const wchar_t *key_srcDir   = L"src_dir";
-    const wchar_t *key_objDir   = L"obj_dir";
-    const wchar_t *key_binDir   = L"bin_dir";
-    const wchar_t *key_execName = L"exec_name";
+    const wchar_t *key_Language = L"language";
+    const wchar_t *key_SrcDir   = L"src_dir";
+    const wchar_t *key_ObjDir   = L"obj_dir";
+    const wchar_t *key_BinDir   = L"bin_dir";
+    const wchar_t *key_ExecName = L"exec_name";
+    const wchar_t *key_AutoExec = L"auto_exec";
+    const wchar_t *key_ExecArgs = L"exec_args";
 
-    if(!load_option(key_language, from, &o_language)) {
-        error_key_not_found(key_language);
+    if(!load_option(key_Language, from, &o_Language)) {
+        error_key_not_found(key_Language);
         return 1;
     }
 
-    if(!load_option(key_objDir, from, &o_objDir)) {
-        error_key_not_found(key_objDir);
+    if(!load_option(key_ObjDir, from, &o_ObjDir)) {
+        error_key_not_found(key_ObjDir);
         return 2;
     }
 
-    if(!load_option(key_binDir, from, &o_binDir)) {
-        error_key_not_found(key_binDir);
+    if(!load_option(key_BinDir, from, &o_BinDir)) {
+        error_key_not_found(key_BinDir);
         return 3;
     }
 
-    if(!load_option(key_execName, from, &o_execName)) {
-        error_key_not_found(key_execName);
+    if(!load_option(key_ExecName, from, &o_ExecName)) {
+        error_key_not_found(key_ExecName);
         return 4;
     }
 
-    if(load_option(L"includes", from, &o_includes))
+    if(load_option(L"includes", from, &o_Includes))
         combine_includes_path();
 
-    if(load_option(L"libs", from, &o_libs))
+    if(load_option(L"libs", from, &o_Libs))
         combine_libs_path();
 
-    load_option(L"compile_options", from, &o_compileOptions);
+    load_option(L"compile_options", from, &o_CompileOptions);
 
-    load_option(L"link_options", from, &o_linkOptions);
+    load_option(L"link_options", from, &o_LinkOptions);
 
-    load_option(L"link_l", from, &o_linkLibs);
+    load_option(L"link_l", from, &o_LinkLibs);
 
-    if(o_objDir.value.characteres[o_objDir.value.length - 1] == L'\\' || o_objDir.value.characteres[o_objDir.value.length - 1] == L'/')
-        strutf16_remove_index(&o_objDir.value, o_objDir.value.length - 1);
+    if(o_ObjDir.value.characteres[o_ObjDir.value.length - 1] == L'\\' || o_ObjDir.value.characteres[o_ObjDir.value.length - 1] == L'/')
+        strutf16_remove_index(&o_ObjDir.value, o_ObjDir.value.length - 1);
+
+    if(load_option(key_AutoExec, from, &o_AutoExec)) {
+        if(
+            g_AutoExec =
+                _wcsicmp(o_AutoExec.value.characteres, L"1")    == 0 ||
+                _wcsicmp(o_AutoExec.value.characteres, L"true") == 0 ||
+                _wcsicmp(o_AutoExec.value.characteres, L"yes")  == 0
+        )
+            load_option(key_ExecArgs, from, &o_ExecArgs);
+    }else
+        g_AutoExec = FALSE;
 
     return 0;
 }
 
 void unload_options() {
     Option *options[] = {
-        &o_language, &o_objDir, &o_binDir, &o_includes,
-        &o_libs, &o_compileOptions, &o_linkOptions, &o_linkLibs, &o_execName
+        &o_Language, &o_ObjDir, &o_BinDir, &o_Includes,
+        &o_Libs, &o_CompileOptions, &o_LinkOptions, &o_LinkLibs, &o_ExecName,
+        &o_AutoExec, &o_ExecArgs
     };
 
     unsigned int i;
@@ -460,13 +480,13 @@ void unload_options() {
 
 char selectCompiler() {
     create_string_utf16(&compiler);
-    string_utf16_lower(&o_language.value);
-    if(wcscmp(o_language.value.characteres, L"c") == 0) {
-        modeLanguage = C_LANGUAGE;
+    string_utf16_lower(&o_Language.value);
+    if(wcscmp(o_Language.value.characteres, L"c") == 0) {
+        g_ModeLanguage = C_LANGUAGE;
         string_utf16_set_value(&compiler, L"gcc");
         return 1;
-    }else if(wcscmp(o_language.value.characteres, L"c++") == 0 || wcscmp(o_language.value.characteres, L"cpp") == 0) {
-        modeLanguage = CPP_LANGUAGE;
+    }else if(wcscmp(o_Language.value.characteres, L"c++") == 0 || wcscmp(o_Language.value.characteres, L"cpp") == 0) {
+        g_ModeLanguage = CPP_LANGUAGE;
         string_utf16_set_value(&compiler, L"g++");
         return 2;
     }
@@ -515,7 +535,7 @@ int main(int argc, char **argv) {
     }
 
     if(!selectCompiler()) {
-        fwprintf(stderr, L"Le langage \"%s\" n'est pas pris en charge...\n", o_language.value.characteres);
+        fwprintf(stderr, L"Le langage \"%s\" n'est pas pris en charge...\n", o_Language.value.characteres);
         unload_options();
         return 1;
     }
@@ -526,10 +546,10 @@ int main(int argc, char **argv) {
     get_current_process_location(&pwd);
     
     String_UTF16 exec;
-    string_utf16_copy(&o_binDir.value, &exec);
-    if(o_binDir.value.characteres[o_binDir.value.length - 1] != L'\\' && o_binDir.value.characteres[o_binDir.value.length - 1] != L'/')
+    string_utf16_copy(&o_BinDir.value, &exec);
+    if(o_BinDir.value.characteres[o_BinDir.value.length - 1] != L'\\' && o_BinDir.value.characteres[o_BinDir.value.length - 1] != L'/')
         string_utf16_add_char(&exec, L'\\');
-    string_utf16_add(&exec, o_execName.value.characteres);
+    string_utf16_add(&exec, o_ExecName.value.characteres);
 
     char commandResult;
 
@@ -538,7 +558,7 @@ int main(int argc, char **argv) {
     String_UTF16 dirCommand;
     create_string_utf16(&dirCommand);
 
-    // Je fais chcp 65001>NUL car y a un bug et des fois la commande s'exécute pas
+    // Je fais chcp 65001>NUL plusieurs fois car y a un bug et des fois la commande s'exécute pas
     string_utf16_set_value(&dirCommand, L"cmd /c chcp 65001>NUL & chcp 65001>NUL & chcp 65001>NUL & dir /b/s *.c");
 
     if(wcscmp(compiler.characteres, L"g++") == 0)
@@ -575,15 +595,16 @@ int main(int argc, char **argv) {
     */
 
     unsigned long *list = NULL;
-    unsigned long needCompileNumber;
+    unsigned long needCompileNumber = 0;
     
 
     unsigned long long startTime;
     unsigned long compileNumber = 0;
 
-    char error, isLink = 0;
+    char errorCompile = -1;
+    char errorLink = -1;
 
-    switch(mode) {
+    switch(g_Mode) {
         case MODE_CLEAN:{
             clean: ;
             wprintf(L"Nettoyage...\n");
@@ -612,7 +633,7 @@ int main(int argc, char **argv) {
             }
             free(cleanCommand.characteres);
             */
-            if(mode == MODE_RESET) goto reset;
+            if(g_Mode == MODE_RESET) goto reset;
             free(out_dirC.characteres);
             free(exec.characteres);
             free_all();
@@ -624,7 +645,7 @@ int main(int argc, char **argv) {
         case MODE_ALL:{
             listCsize = list_files(&listC, &out_dirC);
             free(out_dirC.characteres);
-            mkdirs(o_objDir.value.characteres);
+            mkdirs(o_ObjDir.value.characteres);
 
             needCompileNumber = check_who_must_compile(&list, listO, listC, listOsize);
 
@@ -639,17 +660,17 @@ int main(int argc, char **argv) {
             if(needCompileNumber) {
                 wprintf(L"==========[ Compilation ]==========\n");
                 for(i = 0; i < needCompileNumber; i++) {
-                    if(create_object(listC[list[i]], listO[list[i]], &error) == 0 && error == 0)
+                    if(create_object(listC[list[i]], listO[list[i]], &errorCompile) == 0 && errorCompile == 0)
                         compileNumber++;
                 }
                 wprintf(L"===================================\n\n\n");
             }
         }
         case MODE_LINK:
-            if(mode == MODE_LINK)
+            if(g_Mode == MODE_LINK)
                 startTime = get_current_time_millis();
-            mkdirs(o_binDir.value.characteres);
-            if(mode == MODE_LINK || (compileNumber > 0 && compileNumber == needCompileNumber)) {
+            mkdirs(o_BinDir.value.characteres);
+            if(g_Mode == MODE_LINK || (compileNumber > 0 && compileNumber == needCompileNumber)) {
                 wprintf(L"==========[ Link ]==========\n");
                 
                 String_UTF16 linkCommand;
@@ -658,9 +679,9 @@ int main(int argc, char **argv) {
                 string_utf16_copy(&compiler, &linkCommand);
 
                 // gcc --option
-                if(o_linkOptions.loaded) {
+                if(o_LinkOptions.loaded) {
                     string_utf16_add_char(&linkCommand, L' ');
-                    string_utf16_add(&linkCommand, o_linkOptions.value.characteres);
+                    string_utf16_add(&linkCommand, o_LinkOptions.value.characteres);
                 }
 
                 // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" 
@@ -676,27 +697,25 @@ int main(int argc, char **argv) {
                 string_utf16_add_char(&linkCommand, L'\"');
 
                 // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" -I"C:\oui" 
-                if(o_includes.loaded) {
-                    string_utf16_replace_all_char(&o_includes.value, L'/', L'\\');
-                    string_utf16_add(&linkCommand, o_includes.value.characteres);
+                if(o_Includes.loaded) {
+                    string_utf16_replace_all_char(&o_Includes.value, L'/', L'\\');
+                    string_utf16_add(&linkCommand, o_Includes.value.characteres);
                 }
-                if(o_libs.loaded) {
-                    string_utf16_replace_all_char(&o_libs.value, L'/', L'\\');
-                    string_utf16_add(&linkCommand, o_libs.value.characteres);
+                if(o_Libs.loaded) {
+                    string_utf16_replace_all_char(&o_Libs.value, L'/', L'\\');
+                    string_utf16_add(&linkCommand, o_Libs.value.characteres);
                 }
 
                 // gcc --option "fichier1.o" "fichier2.o" "fichier3.o" -o "prog.exe" -I"C:\oui" -L"C:\non" -lhello
-                if(o_linkLibs.loaded) {
+                if(o_LinkLibs.loaded) {
                     string_utf16_add_char(&linkCommand, L' ');
-                    string_utf16_add(&linkCommand, o_linkLibs.value.characteres);
+                    string_utf16_add(&linkCommand, o_LinkLibs.value.characteres);
                 }
 
                 wprintf(L"%s\n", linkCommand.characteres);
 
-                if((result = execute_command(linkCommand.characteres, NULL, NULL, &error, 1, 1)) != 0)
+                if((result = execute_command(linkCommand.characteres, NULL, NULL, &errorLink, 1, 1)) != 0)
                     error_execute_command(linkCommand.characteres, result);
-                else if(error == 0)
-                    isLink = 1;
                 free(linkCommand.characteres);
                 wprintf(L"============================\n\n\n");
             }
@@ -707,7 +726,7 @@ int main(int argc, char **argv) {
 
     unsigned long long endTime = get_current_time_millis();
     wprintf(L"==========[ Stats ]==========\n");
-    switch(mode) {
+    switch(g_Mode) {
         default:{
             wprintf(L"Aucune stat pour ce mode...\n");
             break;
@@ -716,16 +735,16 @@ int main(int argc, char **argv) {
         case MODE_RESET:{
             if (compileNumber > 0)
                 wprintf(
-                    L"Fichiers compilés : %lu / %lu\n"
+                    L"Fichiers compilés : %lu / %lu (%.02f%%)\n"
                     L"Compilés%s en %llu ms.\n",
-                    compileNumber, needCompileNumber, (isLink ? L" et linkés" : L""), endTime - startTime
+                    compileNumber, needCompileNumber, (float) ((float) compileNumber * 100.0f / (float) needCompileNumber), (errorLink == 0 ? L" et linkés" : L""), endTime - startTime
                 );
             else
                 wprintf(L"Rien n'a changé...\n");
             break;
         }
         case MODE_LINK:{
-            if(isLink)
+            if(errorLink == 0)
                 wprintf(L"Linkés en %llu ms.\n", endTime - startTime);
             else
                 wprintf(L"Rien n'a changé...\n");
@@ -733,6 +752,25 @@ int main(int argc, char **argv) {
         }
     }
     wprintf(L"=============================\n\n");
+
+    // Exécution automatique
+    if(g_AutoExec && compileNumber == needCompileNumber && (errorLink == -1 || errorLink == 0)) {
+        String_UTF16 autoCommand;
+        create_string_utf16(&autoCommand);
+        string_utf16_set_value(&autoCommand, L".\\");
+        string_utf16_add(&autoCommand, exec.characteres);
+        if(o_ExecArgs.value.characteres != NULL) {
+            string_utf16_add_char(&autoCommand, L' ');
+            string_utf16_add(&autoCommand, o_ExecArgs.value.characteres);
+        }
+        wprintf(L"%s\n", autoCommand.characteres);
+        startTime = get_current_time_millis();
+        if(execute_command(autoCommand.characteres, NULL, NULL, NULL, 1, 1) != 0)
+            wprintf(L"[%S] Erreur lors de l'exécution du programme (%lu)\n", PROGRAM_NAME, GetLastError());
+        else
+            wprintf(L"[%S] Durée d'exécution du programme : %llu ms.\n", PROGRAM_NAME, get_current_time_millis() - startTime);
+        free(autoCommand.characteres);
+    }
 
     free(list);
 
@@ -747,6 +785,8 @@ int main(int argc, char **argv) {
             free(listO[i]->characteres);
         free(listO);
     }
+
+    free_all();
 
     return 0;
 }
