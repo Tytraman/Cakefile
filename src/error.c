@@ -5,27 +5,22 @@
 
 void error_file_not_found(const wchar_t *filename) {
     fwprintf(stderr, L"[%S] Erreur : Fichier introuvable -> %s\n", PROGRAM_NAME, filename);
-    programStatus = PROGRAM_STATUS_FILE_NOT_FOUND;
 }
 
 void error_key_not_found(const wchar_t *key) {
     fwprintf(stderr, L"[%S] Erreur : Clé introuvable -> %s\n", PROGRAM_NAME, key);
-    programStatus = PROGRAM_STATUS_KEY_NOT_FOUND;
 }
 
 void error_create_process(const wchar_t *command) {
     fwprintf(stderr, L"[%S] Erreur : Impossible d'exécuter cette commande (%lu) -> %s\n", PROGRAM_NAME, GetLastError(), command);
-    programStatus = PROGRAM_STATUS_ERROR_CREATE_PROCESS;
 }
 
 void error_create_pipe(const wchar_t *command, const char *std) {
     fwprintf(stderr, L"[%S] Erreur : Impossible de créer le tunnel de redirection %S du processus (%lu) -> %s\n", PROGRAM_NAME, std, GetLastError(), command);
-    programStatus = PROGRAM_STATUS_ERROR_CREATE_PIPE;
 }
 
 void error_set_handle_infos() {
     fwprintf(stderr, L"[%S] Erreur : Impossible de définir les informations sur le HANDLE (%lu)\n", PROGRAM_NAME, GetLastError());
-    programStatus = PROGRAM_STATUS_ERROR_SET_HANDLE_INFOS;
 }
 
 void error_create_folder(const wchar_t *folder) {

@@ -14,18 +14,11 @@
 
 #define BUFF_SIZE 2048
 
-#define PROGRAM_STATUS_CAKEFILE_NOT_FOUND     1
-#define PROGRAM_STATUS_KEY_NOT_FOUND          2
-#define PROGRAM_STATUS_FILE_NOT_FOUND         3
-#define PROGRAM_STATUS_DOUBLE_CLICKS          4
-#define PROGRAM_STATUS_ERROR_CREATE_PROCESS   5
-#define PROGRAM_STATUS_ERROR_CREATE_PIPE      6
-#define PROGRAM_STATUS_ERROR_SET_HANDLE_INFOS 7
-
 #define MODE_ALL   1
 #define MODE_RESET 2
 #define MODE_LINK  3
 #define MODE_CLEAN 4
+#define MODE_EXEC  5
 
 #define C_LANGUAGE   1
 #define CPP_LANGUAGE 2
@@ -40,13 +33,14 @@ extern const char *STDERR;
 extern const char *STDOUT;
 extern const char *STDIN;
 
+extern const wchar_t FILE_SEPARATOR;
+extern const wchar_t REVERSE_FILE_SEPARATOR;
+
 extern char g_Mode;
 extern BOOL g_AutoExec;
 
-extern String_UTF16 programFilename;
-extern String_UTF16 pwd;
-
-extern char programStatus;
+extern String_UTF16 g_ProgramFilename;
+extern String_UTF16 g_Pwd;
 
 extern Option o_Language;       // Obligatoire
 extern Option o_ObjDir;         // Obligatoire
@@ -60,6 +54,6 @@ extern Option o_LinkLibs;
 extern Option o_AutoExec;
 extern Option o_ExecArgs;
 
-extern String_UTF16 compiler;
+extern String_UTF16 g_Compiler;
 
 #endif

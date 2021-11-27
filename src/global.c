@@ -8,15 +8,27 @@ const char *STDERR = "STDERR";
 const char *STDOUT = "STDOUT";
 const char *STDIN  = "STDIN";
 
+const wchar_t FILE_SEPARATOR =
+    #ifdef _WIN32
+    L'\\';
+    #else
+    L'/';
+    #endif
+
+const wchar_t REVERSE_FILE_SEPARATOR =
+    #ifdef _WIN32
+    L'/';
+    #else
+    L'\\';
+    #endif
+
 char g_ModeLanguage = 0;
 
 char g_Mode = MODE_ALL;
 BOOL g_AutoExec = FALSE;
 
-String_UTF16 programFilename;
-String_UTF16 pwd;
-
-char programStatus = 0;
+String_UTF16 g_ProgramFilename;
+String_UTF16 g_Pwd;
 
 Option o_Language;
 Option o_ObjDir;
@@ -30,4 +42,4 @@ Option o_ExecName;
 Option o_AutoExec;
 Option o_ExecArgs;
 
-String_UTF16 compiler;
+String_UTF16 g_Compiler;

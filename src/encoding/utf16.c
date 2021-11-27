@@ -6,6 +6,8 @@
 
 void set_console_UTF16() {
     // On met la console en UTF16 pour pouvoir écrire avec de l'unicode
+    fflush(stdout);
+    fflush(stderr);
     _setmode(_fileno(stdin), _O_U16TEXT);
     _setmode(_fileno(stderr), _O_U16TEXT);
     _setmode(_fileno(stdout), _O_U16TEXT);
