@@ -17,6 +17,7 @@ Liste des commandes :
 - **`cake all`** : compile les fichiers modifiés puis crée l'exécutable.
 - **`cake reset`** : équivalent de `cake clean` puis `cake all`.
 - **`cake link`** : link les fichiers objets pour créer l'exécutable.
+- **`cake exec`** : exécute le programme avec les arguments dans l'option `exec_args`.
 - **`cake --help`** : affiche l'aide.
 - **`cake --version`** : affiche la version installée du programme.
 
@@ -39,6 +40,8 @@ Liste des options du fichier `Cakefile` :
 - **`compile_options`** : options à passer lors de la compilation, exemple : `-Wall`.
 - **`link_options`** : options à passer lors du link, exemple : `-Wl,--gc-sections`.
 - **`link_l`** : liste des librairies avec lesquelles link, exemple : `-lWs2_32 -lssl -lcrypto`.
+- **`auto_exec`** : définie si le programme s'exécute automatiquement après sa génération. (*true*/*false*).
+- **`exec_args`** : liste des arguments à passer si auto_exec est activé ou si la commande `cake exec` a été tapée.
 
 <br>
 
