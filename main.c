@@ -9,6 +9,7 @@
 #include "include/file/file_utils.h"
 #include "include/memory/memory.h"
 #include "include/os/winapi.h"
+#include "include/funcs.h"
 
 char check_args(int argc, char **argv);
 unsigned long list_files(String_UTF16 ***listDest, String_UTF16 *src);
@@ -320,9 +321,13 @@ char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
         string_utf16_add(&command, o_Libs.value.characteres);
 
     wprintf(L"%s\n", command.characteres);
+    if(g_DrawProgressBar) {
+        get_last_cursor_pos();
+        draw_progress_bar(g_CurrentCompile + 1, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
+    }
 
     char result;
-    if((result = execute_command(command.characteres, NULL, NULL, error, REDIRECT_STDOUT | REDIRECT_STDOUT | PRINT_STD)) != 0)
+    if((result = execute_command(command.characteres, NULL, NULL, error, REDIRECT_STDOUT | REDIRECT_STDERR | PRINT_STD)) != 0)
         error_execute_command(command.characteres, result);
     free(command.characteres);
     return result;
@@ -525,6 +530,24 @@ int main(int argc, char **argv) {
 
     set_console_UTF16();
 
+    g_Out = GetStdHandle(STD_OUTPUT_HANDLE);
+    GetConsoleScreenBufferInfo(g_Out, &g_ScreenInfo);
+
+    CONSOLE_SCREEN_BUFFER_INFOEX infoex;
+    infoex.cbSize = sizeof(infoex);
+    GetConsoleScreenBufferInfoEx(g_Out, &infoex);
+    COLORREF recoveryTable[16];
+    memcpy(recoveryTable, infoex.ColorTable, sizeof(recoveryTable));
+    infoex.srWindow.Bottom = g_ScreenInfo.srWindow.Bottom + 1;
+    infoex.srWindow.Right  = g_ScreenInfo.srWindow.Right  + 1;
+    infoex.ColorTable[0] = RGB(35, 0, 0);
+    infoex.ColorTable[1] = RGB(45, 144, 224);
+    infoex.ColorTable[2] = RGB(42, 250, 157);
+    SetConsoleScreenBufferInfoEx(g_Out, &infoex);
+
+    g_LastX = g_ScreenInfo.dwCursorPosition.X;
+    g_LastY = g_ScreenInfo.dwCursorPosition.Y;
+
     if(!check_args(argc, argv))
         return 0;
 
@@ -609,11 +632,8 @@ int main(int argc, char **argv) {
     unsigned long i;
 
     unsigned long *list = NULL;
-    unsigned long needCompileNumber = 0;
-    
 
     unsigned long long startTime;
-    unsigned long compileNumber = 0;
 
     char errorCompile = -1;
     char errorLink = -1;
@@ -642,9 +662,9 @@ int main(int argc, char **argv) {
             free(out_dirC.characteres);
             mkdirs(o_ObjDir.value.characteres);
 
-            needCompileNumber = check_who_must_compile(&list, listO, listC, listOsize);
+            g_NeedCompileNumber = check_who_must_compile(&list, listO, listC, listOsize);
 
-            for(i = 0; i < needCompileNumber; i++) {
+            for(i = 0; i < g_NeedCompileNumber; i++) {
                 String_UTF16 copy;
                 string_utf16_copy(listO[list[i]], &copy);
                 string_utf16_remove_part_from_end(&copy, FILE_SEPARATOR);
@@ -652,12 +672,21 @@ int main(int argc, char **argv) {
                 free(copy.characteres);
             }
             startTime = get_current_time_millis();
-            if(needCompileNumber) {
+            if(g_NeedCompileNumber) {
+                get_last_cursor_pos();
                 wprintf(L"==========[ Compilation ]==========\n");
-                for(i = 0; i < needCompileNumber; i++) {
-                    if(create_object(listC[list[i]], listO[list[i]], &errorCompile) == 0 && errorCompile == 0)
-                        compileNumber++;
+                get_last_cursor_pos();
+                g_DrawProgressBar = 1;
+                draw_progress_bar(g_CurrentCompile, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
+                for(g_CurrentCompile = 0; g_CurrentCompile < g_NeedCompileNumber; g_CurrentCompile++) {
+                    if(create_object(listC[list[g_CurrentCompile]], listO[list[g_CurrentCompile]], &errorCompile) == 0 && errorCompile == 0)
+                        g_CompileNumber++;
+                    get_last_cursor_pos();
+                    draw_progress_bar(g_CurrentCompile + 1, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
                 }
+                g_DrawProgressBar = 0;
+                get_last_cursor_pos();
+                clear_progress_bar();
                 wprintf(L"===================================\n\n\n");
             }
         }
@@ -665,7 +694,7 @@ int main(int argc, char **argv) {
             if(g_Mode == MODE_LINK)
                 startTime = get_current_time_millis();
             mkdirs(o_BinDir.value.characteres);
-            if(g_Mode == MODE_LINK || (compileNumber > 0 && compileNumber == needCompileNumber)) {
+            if(g_Mode == MODE_LINK || (g_CompileNumber > 0 && g_CompileNumber == g_NeedCompileNumber)) {
                 wprintf(L"==========[ Link ]==========\n");
                 
                 String_UTF16 linkCommand;
@@ -729,11 +758,11 @@ int main(int argc, char **argv) {
         }
         case MODE_ALL:
         case MODE_RESET:{
-            if (compileNumber > 0)
+            if(g_CompileNumber > 0)
                 wprintf(
                     L"Fichiers compilés : %lu / %lu (%.02f%%)\n"
                     L"Compilés%s en %llu ms.\n",
-                    compileNumber, needCompileNumber, (float) ((float) compileNumber * 100.0f / (float) needCompileNumber), (errorLink == 0 ? L" et linkés" : L""), endTime - startTime
+                    g_CompileNumber, g_NeedCompileNumber, (float) ((float) g_CompileNumber * 100.0f / (float) g_NeedCompileNumber), (errorLink == 0 ? L" et linkés" : L""), endTime - startTime
                 );
             else
                 wprintf(L"Rien n'a changé...\n");
@@ -750,7 +779,7 @@ int main(int argc, char **argv) {
     wprintf(L"=============================\n\n");
 
     // Exécution automatique
-    if(g_AutoExec && compileNumber == needCompileNumber && (errorLink == -1 || errorLink == 0)) {
+    if(g_AutoExec && g_CompileNumber == g_NeedCompileNumber && (errorLink == -1 || errorLink == 0)) {
         unsigned long long duration;
         exec_exec(&exec, &duration);
         wprintf(L"[%S] Durée d'exécution du programme : %llu ms.\n", PROGRAM_NAME, duration);
@@ -772,6 +801,11 @@ int main(int argc, char **argv) {
 
 exec_end:
     free_all();
+
+    for(i = 0; i < 16; i++)
+        infoex.ColorTable[i] = recoveryTable[i];
+
+    SetConsoleScreenBufferInfoEx(g_Out, &infoex);
 
     return 0;
 }

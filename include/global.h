@@ -23,6 +23,16 @@
 #define C_LANGUAGE   1
 #define CPP_LANGUAGE 2
 
+extern HANDLE g_Out;
+extern CONSOLE_SCREEN_BUFFER_INFO g_ScreenInfo;
+
+extern short g_LastX;
+extern short g_LastY;
+extern char g_DrawProgressBar;
+extern short g_ProgressBarWidthScale;
+extern wchar_t g_ProgressBarEmptyChar;
+extern wchar_t g_ProgressBarFillChar;
+
 extern char g_ModeLanguage;
 
 extern const char    *VERSION;
@@ -38,6 +48,10 @@ extern const wchar_t REVERSE_FILE_SEPARATOR;
 
 extern char g_Mode;
 extern BOOL g_AutoExec;
+
+extern unsigned long g_NeedCompileNumber;
+extern unsigned long g_CompileNumber;
+extern unsigned long g_CurrentCompile;
 
 extern String_UTF16 g_ProgramFilename;
 extern String_UTF16 g_Pwd;

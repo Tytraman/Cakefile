@@ -3,6 +3,7 @@
 #include "../../include/global.h"
 #include "../../include/memory/memory.h"
 #include "../../include/encoding/utf8.h"
+#include "../../include/funcs.h"
 
 #include <process.h>
 
@@ -36,8 +37,18 @@ unsigned int __stdcall stdout_thread(void *pParam) {
             memcpy(&data->buff[tempSize], buff, read);
         }
 
-        if(data->flags & PRINT_STD)
+        if(data->flags & PRINT_STD) {
+            if(g_DrawProgressBar) {
+                get_last_cursor_pos();
+                clear_progress_bar();
+            }
             WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buff, read, NULL, NULL);
+        }
+
+        if(g_DrawProgressBar) {
+            get_last_cursor_pos();
+            draw_progress_bar(g_CurrentCompile + 1, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
+        }
     }
     SetEvent(data->event);
     _endthreadex(0);
@@ -66,8 +77,18 @@ unsigned int __stdcall stderr_thread(void *pParam) {
             memcpy(&data->buff[tempSize], buff, read);
         }
 
-        if(data->flags & PRINT_STD)
+        if(data->flags & PRINT_STD) {
+            if(g_DrawProgressBar) {
+                get_last_cursor_pos();
+                clear_progress_bar();
+            }
             WriteFile(GetStdHandle(STD_ERROR_HANDLE), buff, read, NULL, NULL);
+        }
+
+        if(g_DrawProgressBar) {
+            get_last_cursor_pos();
+            draw_progress_bar(g_CurrentCompile + 1, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
+        }
     }
     SetEvent(data->event);
     _endthreadex(0);
