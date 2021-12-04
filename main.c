@@ -320,6 +320,10 @@ char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
     if(o_Libs.loaded)
         string_utf16_add(&command, o_Libs.value.characteres);
 
+    if(g_DrawProgressBar) {
+        get_last_cursor_pos();
+        clear_progress_bar();
+    }
     wprintf(L"%s\n", command.characteres);
     if(g_DrawProgressBar) {
         get_last_cursor_pos();
@@ -327,7 +331,7 @@ char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
     }
 
     char result;
-    if((result = execute_command(command.characteres, NULL, NULL, error, REDIRECT_STDOUT | REDIRECT_STDERR | PRINT_STD)) != 0)
+    if((result = execute_command(command.characteres, NULL, NULL, error, PRINT_STD)) != 0)
         error_execute_command(command.characteres, result);
     free(command.characteres);
     return result;
@@ -508,7 +512,8 @@ char exec_exec(String_UTF16 *exec, unsigned long long *duration) {
     wprintf(L"%s\n", command.characteres);
     unsigned long long startTime = get_current_time_millis();
     char result;
-    if((result = execute_command(command.characteres, NULL, NULL, NULL, 0)) != 0) {
+    String_UTF16 out, err;
+    if((result = execute_command(command.characteres, NULL, NULL, NULL, PRINT_STD)) != 0) {
         wprintf(L"[%S] Erreur lors de l'exécution du programme (%d) (%lu)\n", PROGRAM_NAME, result, GetLastError());
         return 0;
     }
@@ -589,7 +594,7 @@ int main(int argc, char **argv) {
     string_utf16_add(&exec, o_ExecName.value.characteres);
 
     if(g_Mode == MODE_EXEC) {
-        unsigned long long duration;
+        unsigned long long duration = 0;
         exec_exec(&exec, &duration);
         wprintf(L"[%S] Durée d'exécution du programme : %llu ms.\n", PROGRAM_NAME, duration);
         goto exec_end;
@@ -608,7 +613,7 @@ int main(int argc, char **argv) {
     if(g_ModeLanguage == CPP_LANGUAGE)
         string_utf16_add(&dirCommand, L" *.cpp *.c++");
 
-    if((commandResult = execute_command(dirCommand.characteres, &out_dirC, NULL, NULL, REDIRECT_STDOUT | REDIRECT_STDERR)) != 0)
+    if((commandResult = execute_command(dirCommand.characteres, &out_dirC, NULL, NULL, 0)) != 0)
         fwprintf(stderr, L"Erreur lors de l'exécution de la commande : %d\n", commandResult);
 
     free(dirCommand.characteres);
@@ -738,7 +743,7 @@ int main(int argc, char **argv) {
 
                 wprintf(L"%s\n", linkCommand.characteres);
 
-                if((result = execute_command(linkCommand.characteres, NULL, NULL, &errorLink, REDIRECT_STDOUT | REDIRECT_STDERR | PRINT_STD)) != 0)
+                if((result = execute_command(linkCommand.characteres, NULL, NULL, &errorLink, PRINT_STD)) != 0)
                     error_execute_command(linkCommand.characteres, result);
                 free(linkCommand.characteres);
                 wprintf(L"============================\n\n\n");

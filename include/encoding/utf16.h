@@ -86,6 +86,7 @@ char strutf16_start_with(String_UTF16 *utf, wchar_t *str);
 /* ===== Autres ===== */
 
 void set_console_UTF16();
+void set_console_ascii();
 void strutf16_print_hexa(String_UTF16 *utf);
 
 #endif

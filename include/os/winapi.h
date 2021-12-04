@@ -7,9 +7,7 @@
 #include <windows.h>
 #include <stddef.h>
 
-#define REDIRECT_STDOUT 0x0001
-#define REDIRECT_STDERR 0x0002
-#define PRINT_STD       0x0004
+#define PRINT_STD       0x0001
 
 DWORD get_program_file_name(String_UTF16 *dest);
 DWORD get_current_process_location(String_UTF16 *dest);

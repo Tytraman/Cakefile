@@ -30,12 +30,10 @@ unsigned int __stdcall stdout_thread(void *pParam) {
         if(!result || read == 0)
             break;
 
-        if(data->flags & REDIRECT_STDOUT) {
-            tempSize = data->buffSize;
-            data->buffSize += read;
-            data->buff = (unsigned char *) realloc(data->buff, data->buffSize);
-            memcpy(&data->buff[tempSize], buff, read);
-        }
+        tempSize = data->buffSize;
+        data->buffSize += read;
+        data->buff = (unsigned char *) realloc(data->buff, data->buffSize);
+        memcpy(&data->buff[tempSize], buff, read);
 
         if(data->flags & PRINT_STD) {
             if(g_DrawProgressBar) {
@@ -44,11 +42,13 @@ unsigned int __stdcall stdout_thread(void *pParam) {
             }
             WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buff, read, NULL, NULL);
         }
-
+        
+        /*
         if(g_DrawProgressBar) {
             get_last_cursor_pos();
             draw_progress_bar(g_CurrentCompile + 1, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
         }
+        */
     }
     SetEvent(data->event);
     _endthreadex(0);
@@ -70,12 +70,11 @@ unsigned int __stdcall stderr_thread(void *pParam) {
 
         if(data->error) *data->error = 1;
 
-        if(data->flags & REDIRECT_STDERR) {
-            tempSize = data->buffSize;
-            data->buffSize += read;
-            data->buff = (unsigned char *) realloc(data->buff, data->buffSize);
-            memcpy(&data->buff[tempSize], buff, read);
-        }
+        tempSize = data->buffSize;
+        data->buffSize += read;
+        data->buff = (unsigned char *) realloc(data->buff, data->buffSize);
+        memcpy(&data->buff[tempSize], buff, read);
+        
 
         if(data->flags & PRINT_STD) {
             if(g_DrawProgressBar) {
@@ -85,44 +84,30 @@ unsigned int __stdcall stderr_thread(void *pParam) {
             WriteFile(GetStdHandle(STD_ERROR_HANDLE), buff, read, NULL, NULL);
         }
 
+        /*
         if(g_DrawProgressBar) {
             get_last_cursor_pos();
             draw_progress_bar(g_CurrentCompile + 1, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
         }
+        */
     }
     SetEvent(data->event);
     _endthreadex(0);
 }
 
-DWORD get_program_file_name(String_UTF16 *dest) {
-    wchar_t temp[0b1111111111111111];
-    DWORD length = GetModuleFileNameW(NULL, temp, 0b1111111111111111);
-    string_utf16_set_value(dest, temp);
-    return length;
-}
-
-DWORD get_current_process_location(String_UTF16 *dest) {
-    wchar_t temp[0b1111111111111111];
-    DWORD length = GetCurrentDirectoryW(0b1111111111111111, temp);
-    temp[length] = L'\\';
-    temp[length + 1] = L'\0';
-    string_utf16_set_value(dest, temp);
-    return length;
-}
-
 char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, char *error, unsigned char flags) {
     if(error) *error = 0;
 
-    if(flags & REDIRECT_STDOUT && out != NULL)
+    if(out != NULL)
         create_string_utf16(out);
-    if(flags & REDIRECT_STDERR && err != NULL)
+    if(err != NULL)
         create_string_utf16(err);
 
     ThreadData dataStdout = { 0 };
-    ThreadData dataStderr = { 0 }; 
+    ThreadData dataStderr = { 0 };
 
     dataStdout.flags = flags;
-    dataStderr.flags = flags;  
+    dataStderr.flags = flags;
 
     dataStderr.error = error;
 
@@ -146,43 +131,39 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     }
     
     // stdout
-    if(flags & REDIRECT_STDOUT) {
-        dataStdout.event = CreateEventA(NULL, TRUE, FALSE, NULL);
-        if(!CreatePipe(&dataStdout.pipe, &childStdout_wr, &sa, BUFF_SIZE)) {
-            CloseHandle(childStdin_rd);
-            CloseHandle(childStdin_wr);
-            return -3;
-        }
-        if(!SetHandleInformation(dataStdout.pipe, HANDLE_FLAG_INHERIT, 0)) {
-            CloseHandle(childStdin_rd);
-            CloseHandle(childStdin_wr);
-            CloseHandle(dataStdout.pipe);
-            CloseHandle(childStdout_wr);
-            return -4;
-        }
+    dataStdout.event = CreateEventA(NULL, TRUE, FALSE, NULL);
+    if(!CreatePipe(&dataStdout.pipe, &childStdout_wr, &sa, BUFF_SIZE)) {
+        CloseHandle(childStdin_rd);
+        CloseHandle(childStdin_wr);
+        return -3;
+    }
+    if(!SetHandleInformation(dataStdout.pipe, HANDLE_FLAG_INHERIT, 0)) {
+        CloseHandle(childStdin_rd);
+        CloseHandle(childStdin_wr);
+        CloseHandle(dataStdout.pipe);
+        CloseHandle(childStdout_wr);
+        return -4;
     }
     
-
     // stderr
-    if(flags & REDIRECT_STDERR) {
-        dataStderr.event = CreateEventA(NULL, TRUE, FALSE, NULL);
-        if(!CreatePipe(&dataStderr.pipe, &childStderr_wr, &sa, BUFF_SIZE)) {
-            CloseHandle(childStdin_rd);
-            CloseHandle(childStdin_wr);
-            CloseHandle(dataStdout.pipe);
-            CloseHandle(childStdout_wr);
-            return -5;
-        }
-        if(!SetHandleInformation(dataStderr.pipe, HANDLE_FLAG_INHERIT, 0)) {
-            CloseHandle(childStdin_rd);
-            CloseHandle(childStdin_wr);
-            CloseHandle(dataStdout.pipe);
-            CloseHandle(childStdout_wr);
-            CloseHandle(dataStderr.pipe);
-            CloseHandle(childStderr_wr);
-            return -6;
-        }
+    dataStderr.event = CreateEventA(NULL, TRUE, FALSE, NULL);
+    if(!CreatePipe(&dataStderr.pipe, &childStderr_wr, &sa, BUFF_SIZE)) {
+        CloseHandle(childStdin_rd);
+        CloseHandle(childStdin_wr);
+        CloseHandle(dataStdout.pipe);
+        CloseHandle(childStdout_wr);
+        return -5;
     }
+    if(!SetHandleInformation(dataStderr.pipe, HANDLE_FLAG_INHERIT, 0)) {
+        CloseHandle(childStdin_rd);
+        CloseHandle(childStdin_wr);
+        CloseHandle(dataStdout.pipe);
+        CloseHandle(childStdout_wr);
+        CloseHandle(dataStderr.pipe);
+        CloseHandle(childStderr_wr);
+        return -6;
+    }
+    
     
     // Copie de la commande parce que CreateProcess modifie en interne la commande.
     size_t commandLength = wcslen(command);
@@ -228,25 +209,19 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     HANDLE stdoutThread = NULL;
     HANDLE stderrThread = NULL;
 
-    if(flags & REDIRECT_STDOUT)
-        stdoutThread = (HANDLE) _beginthreadex(NULL, 0, stdout_thread, &dataStdout, 0, 0);
-    if(flags & REDIRECT_STDERR)
-        stderrThread = (HANDLE) _beginthreadex(NULL, 0, stderr_thread, &dataStderr, 0, 0);
-    if(flags & REDIRECT_STDOUT) {
-        WaitForSingleObject(dataStdout.event, INFINITE);
-        CloseHandle(dataStdout.event);
-        CloseHandle(stdoutThread);
-        CloseHandle(dataStdout.pipe);
-    }
-    if(flags & REDIRECT_STDERR) {
-        WaitForSingleObject(dataStderr.event, INFINITE);
-        CloseHandle(dataStderr.event);
-        CloseHandle(stderrThread);
-        CloseHandle(dataStderr.pipe);
-    }
+    stdoutThread = (HANDLE) _beginthreadex(NULL, 0, stdout_thread, &dataStdout, 0, 0);
+    stderrThread = (HANDLE) _beginthreadex(NULL, 0, stderr_thread, &dataStderr, 0, 0);
 
-    if(!(flags & REDIRECT_STDOUT) && !(flags & REDIRECT_STDERR))
-        WaitForSingleObject(pi.hProcess, INFINITE);
+    WaitForSingleObject(dataStdout.event, INFINITE);
+    CloseHandle(dataStdout.event);
+    CloseHandle(stdoutThread);
+    CloseHandle(dataStdout.pipe);
+    
+
+    WaitForSingleObject(dataStderr.event, INFINITE);
+    CloseHandle(dataStderr.event);
+    CloseHandle(stderrThread);
+    CloseHandle(dataStderr.pipe);
 
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
@@ -278,6 +253,22 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     CloseHandle(childStdin_wr);
     free(commandCopy);
     return 0;
+}
+
+DWORD get_program_file_name(String_UTF16 *dest) {
+    wchar_t temp[0b1111111111111111];
+    DWORD length = GetModuleFileNameW(NULL, temp, 0b1111111111111111);
+    string_utf16_set_value(dest, temp);
+    return length;
+}
+
+DWORD get_current_process_location(String_UTF16 *dest) {
+    wchar_t temp[0b1111111111111111];
+    DWORD length = GetCurrentDirectoryW(0b1111111111111111, temp);
+    temp[length] = L'\\';
+    temp[length + 1] = L'\0';
+    string_utf16_set_value(dest, temp);
+    return length;
 }
 
 unsigned long long filetime_to_ularge(FILETIME *ft) {

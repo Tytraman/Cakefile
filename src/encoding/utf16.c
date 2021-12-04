@@ -13,6 +13,14 @@ void set_console_UTF16() {
     _setmode(_fileno(stdout), _O_U16TEXT);
 }
 
+void set_console_ascii() {
+    fflush(stdout);
+    fflush(stderr);
+    _setmode(_fileno(stdin), _O_TEXT);
+    _setmode(_fileno(stdout), _O_TEXT);
+    _setmode(_fileno(stderr), _O_TEXT);
+}
+
 void create_string_utf16(String_UTF16 *utf) {
     utf->length = 0;
     utf->characteres = NULL;
