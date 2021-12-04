@@ -31,7 +31,7 @@ Liste des options du fichier `Cakefile` :
 
 **[ Obligatoires ]**
 - **`language`** : langage de programmation utilisé, pour plus d'infos voir [**les langages supportés**](#head_languages).
-- **`obj_dir`** : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.
+- **`obj_dir`** : dossier où sont stockés les fichiers objets une fois les fichiers sources compilés.
 - **`bin_dir`** : dossier où sera stocké l'exécutable final.
 - **`exec_name`** : nom de l'exécutable final.
 
