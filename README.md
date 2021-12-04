@@ -18,6 +18,7 @@ Liste des commandes :
 - **`cake reset`** : équivalent de `cake clean` puis `cake all`.
 - **`cake link`** : link les fichiers objets pour créer l'exécutable.
 - **`cake exec`** : exécute le programme avec les arguments dans l'option `exec_args`.
+- **`cake lines`** : affiche le nombre de lignes de chaque fichier puis le total.
 - **`cake --help`** : affiche l'aide.
 - **`cake --version`** : affiche la version installée du programme.
 
