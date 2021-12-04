@@ -37,6 +37,8 @@ char check_args(int argc, char **argv) {
             g_Mode = MODE_CLEAN;
         else if(strcasecmp(argv[1], "exec") == 0)
             g_Mode = MODE_EXEC;
+        else if(strcasecmp(argv[1], "lines") == 0)
+            g_Mode = MODE_LINES_COUNT;
         else if(strcasecmp(argv[1], "--help") == 0) {
             wprintf(
                 L"==========[ %S ]==========\n"
@@ -46,6 +48,7 @@ char check_args(int argc, char **argv) {
                 L"> all : compile les fichiers modifiés puis crée l'exécutable.\n"
                 L"> reset : équivalent de `cake clean` puis `cake all`.\n"
                 L"> exec : exécute le programme avec les arguments dans l'option `exec_args`.\n"
+                L"> lines : affiche le nombre de lignes de chaque fichier puis le total.\n"
                 L"> --help : affiche ce message.\n"
                 L"> --version : affiche la version installée du programme.\n"
                 L"> --generate : génère un fichier `Cakefile` avec les options par défaut.\n\n"
@@ -602,7 +605,7 @@ int main(int argc, char **argv) {
 
     char commandResult;
 
-    // On récupère la liste de tous les fichiers C du dossier et des sous dossiers.
+    /* On récupère la liste de tous les fichiers C du dossier et des sous dossiers. */
     String_UTF16 out_dirC;
     String_UTF16 dirCommand;
     create_string_utf16(&dirCommand);
@@ -618,6 +621,8 @@ int main(int argc, char **argv) {
 
     free(dirCommand.characteres);
 
+    /* ---------------------------------------------------------------------------- */
+
     if(out_dirC.length == 0) {
         fwprintf(stderr, L"Aucun fichier trouvé...\n");
         free(out_dirC.characteres);
@@ -625,11 +630,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Liste des fichiers sources, pour compiler.
     String_UTF16 **listC = NULL;
     unsigned long listCsize = 0;
 
-    // Liste des fichiers O, pour linker.
     String_UTF16 **listO = NULL;
     unsigned long listOsize = 0;
 
@@ -659,9 +662,10 @@ int main(int argc, char **argv) {
             free_all();
             return 1;
         }
-        case MODE_RESET:
+        case MODE_RESET:{
             goto clean;
-            reset:
+            reset: ;
+        }
         case MODE_ALL:{
             listCsize = list_files(&listC, &out_dirC);
             free(out_dirC.characteres);
@@ -695,9 +699,11 @@ int main(int argc, char **argv) {
                 wprintf(L"===================================\n\n\n");
             }
         }
-        case MODE_LINK:
-            if(g_Mode == MODE_LINK)
+        case MODE_LINK:{
+            if(g_Mode == MODE_LINK) {
+                free(out_dirC.characteres);
                 startTime = get_current_time_millis();
+            }
             mkdirs(o_BinDir.value.characteres);
             if(g_Mode == MODE_LINK || (g_CompileNumber > 0 && g_CompileNumber == g_NeedCompileNumber)) {
                 wprintf(L"==========[ Link ]==========\n");
@@ -749,39 +755,99 @@ int main(int argc, char **argv) {
                 wprintf(L"============================\n\n\n");
             }
             break;
-        default:
+        }
+        case MODE_LINES_COUNT:{
+            wprintf(L"==========[ Lignes ]==========\n");
+            /* On récupère la liste de tous les fichiers .h du dossier et des sous dossiers. */
+            String_UTF16 out_DirH;
+            String_UTF16 dirHCommand;
+            create_string_utf16(&dirHCommand);
+
+            // Je fais chcp 65001>NUL plusieurs fois car y a un bug et des fois la commande s'exécute pas
+            string_utf16_set_value(&dirHCommand, L"cmd /c chcp 65001>NUL & chcp 65001>NUL & chcp 65001>NUL & dir /b/s *.h");
+
+            if(g_ModeLanguage == CPP_LANGUAGE)
+                string_utf16_add(&dirHCommand, L" *.hpp");
+
+            if((commandResult = execute_command(dirHCommand.characteres, &out_DirH, NULL, NULL, 0)) != 0)
+                fwprintf(stderr, L"Erreur lors de l'exécution de la commande : %d\n", commandResult);
+
+            free(dirHCommand.characteres);
+
+            /* ---------------------------------------------------------------------------- */
+            String_UTF16 **listH = NULL;
+            unsigned long listHsize = list_files(&listH, &out_DirH);
+            listCsize = list_files(&listC, &out_dirC);
+            unsigned long j;
+            unsigned long statLines = 1;
+            unsigned long long statTotalLines = 1;
+            String_UTF8 sourceFile8;
+            String_UTF16 sourceFile16;
+            create_string_utf16(&sourceFile16);
+
+            String_UTF16 ***targetList = &listH;
+            unsigned long *listSize = &listHsize;
+lines_count_loop:
+            for(i = 0; i < *listSize; i++) {
+                if(open_utf8_file(&sourceFile8, (*targetList)[i]->characteres)) {
+                    string_utf8_to_utf16(&sourceFile8, &sourceFile16);
+                    free(sourceFile8.bytes);
+                    for(j = 0; j < sourceFile16.length; j++) {
+                        if(sourceFile16.characteres[j] == L'\n')
+                            statLines++;
+                    }
+                    statTotalLines += statLines;
+                    wprintf(L"%s : %lu\n", (*targetList)[i]->characteres, statLines);
+                    statLines = 1;
+                }
+            }
+            if(listSize == &listHsize) {
+                targetList = &listC;
+                listSize = &listCsize;
+                goto lines_count_loop;
+            }
+            for(i = 0; i < listHsize; i++)
+                free(listH[i]->characteres);
+            free(listH);
+            free(sourceFile16.characteres);
+            wprintf(
+                L"\nTotal : %llu\n"
+                L"==============================\n"
+                , statTotalLines
+            );
             break;
+        }
+        default: break;
     }
 
     // Statistiques une fois les opérations terminées
-    unsigned long long endTime = get_current_time_millis();
-    wprintf(L"==========[ Stats ]==========\n");
-    switch(g_Mode) {
-        default:{
-            wprintf(L"Aucune stat pour ce mode...\n");
-            break;
+    if(g_Mode & MODE_STATS_ENABLED) {
+        unsigned long long endTime = get_current_time_millis();
+        wprintf(L"==========[ Stats ]==========\n");
+        switch(g_Mode) {
+            default: break;
+            case MODE_ALL:
+            case MODE_RESET:{
+                if(g_CompileNumber > 0)
+                    wprintf(
+                        L"Fichiers compilés : %lu / %lu (%.02f%%)\n"
+                        L"Compilés%s en %llu ms.\n",
+                        g_CompileNumber, g_NeedCompileNumber, (float) ((float) g_CompileNumber * 100.0f / (float) g_NeedCompileNumber), (errorLink == 0 ? L" et linkés" : L""), endTime - startTime
+                    );
+                else
+                    wprintf(L"Rien n'a changé...\n");
+                break;
+            }
+            case MODE_LINK:{
+                if(errorLink == 0)
+                    wprintf(L"Linkés en %llu ms.\n", endTime - startTime);
+                else
+                    wprintf(L"Rien n'a changé...\n");
+                break;
+            }
         }
-        case MODE_ALL:
-        case MODE_RESET:{
-            if(g_CompileNumber > 0)
-                wprintf(
-                    L"Fichiers compilés : %lu / %lu (%.02f%%)\n"
-                    L"Compilés%s en %llu ms.\n",
-                    g_CompileNumber, g_NeedCompileNumber, (float) ((float) g_CompileNumber * 100.0f / (float) g_NeedCompileNumber), (errorLink == 0 ? L" et linkés" : L""), endTime - startTime
-                );
-            else
-                wprintf(L"Rien n'a changé...\n");
-            break;
-        }
-        case MODE_LINK:{
-            if(errorLink == 0)
-                wprintf(L"Linkés en %llu ms.\n", endTime - startTime);
-            else
-                wprintf(L"Rien n'a changé...\n");
-            break;
-        }
+        wprintf(L"=============================\n\n");
     }
-    wprintf(L"=============================\n\n");
 
     // Exécution automatique
     if(g_AutoExec && g_CompileNumber == g_NeedCompileNumber && (errorLink == -1 || errorLink == 0)) {

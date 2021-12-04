@@ -14,11 +14,17 @@
 
 #define BUFF_SIZE 2048
 
-#define MODE_ALL   1
-#define MODE_RESET 2
-#define MODE_LINK  3
-#define MODE_CLEAN 4
-#define MODE_EXEC  5
+
+// Si la valeur binaire du mode commence par 1, les stats sont activées, sinon non.
+
+#define MODE_STATS_ENABLED 0x1000
+
+#define MODE_ALL         0x1001
+#define MODE_RESET       0x1002
+#define MODE_LINK        0x1003
+#define MODE_CLEAN       0x0004
+#define MODE_EXEC        0x0005
+#define MODE_LINES_COUNT 0x0006
 
 #define C_LANGUAGE   1
 #define CPP_LANGUAGE 2
@@ -46,7 +52,7 @@ extern const char *STDIN;
 extern const wchar_t FILE_SEPARATOR;
 extern const wchar_t REVERSE_FILE_SEPARATOR;
 
-extern char g_Mode;
+extern unsigned int g_Mode;
 extern BOOL g_AutoExec;
 
 extern unsigned long g_NeedCompileNumber;

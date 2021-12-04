@@ -34,7 +34,7 @@ const wchar_t REVERSE_FILE_SEPARATOR =
 
 char g_ModeLanguage = 0;
 
-char g_Mode = MODE_ALL;
+unsigned int g_Mode = MODE_ALL;
 BOOL g_AutoExec = FALSE;
 
 unsigned long g_NeedCompileNumber = 0;
