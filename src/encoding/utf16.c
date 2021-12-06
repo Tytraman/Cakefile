@@ -1,4 +1,5 @@
 #include "../../include/encoding/utf16.h"
+#include "../../include/encoding/utf8.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -376,21 +377,6 @@ String_UTF16 *strutf16_getline(String_UTF16_Reader *reader) {
 void free_strutf16(String_UTF16 *utf) {
     free(utf->characteres);
     free(utf);
-}
-
-void strutf16_print_hexa(String_UTF16 *utf) {
-    char count = 0;
-    unsigned long i;
-    for(i = 0; i < utf->length; i++) {
-        wprintf(L"%02x ", utf->characteres[i]);
-        if(count == 16) {
-            wprintf(L"\n");
-            count = 0;
-        }else count++;
-    }
-
-    if(count != 0)
-        wprintf(L"\n");
 }
 
 char strutf16_remove_index(String_UTF16 *utf, unsigned long index) {

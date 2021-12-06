@@ -49,9 +49,6 @@ extern const char *STDERR;
 extern const char *STDOUT;
 extern const char *STDIN;
 
-extern const wchar_t FILE_SEPARATOR;
-extern const wchar_t REVERSE_FILE_SEPARATOR;
-
 extern unsigned int g_Mode;
 extern BOOL g_AutoExec;
 
@@ -75,5 +72,19 @@ extern Option o_AutoExec;
 extern Option o_ExecArgs;
 
 extern String_UTF16 g_Compiler;
+
+#ifdef _WIN32
+#define FILE_SEPARATOR         L'\\'
+#define REVERSE_FILE_SEPARATOR L'/'
+
+#define FILE_SEPARATOR_STR         L"\\"
+#define REVERSE_FILE_SEPARATOR_STR L"/"
+#else
+#define FILE_SEPARATOR         L'/'
+#define REVERSE_FILE_SEPARATOR L'\\'
+
+#define FILE_SEPARATOR_STR         L"/"
+#define REVERSE_FILE_SEPARATOR_STR L"\\"
+#endif
 
 #endif

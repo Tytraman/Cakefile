@@ -1,4 +1,5 @@
 #include "../../include/encoding/utf8.h"
+#include "../../include/memory/memory.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +52,21 @@ void string_utf8_to_utf16(String_UTF8 *src, String_UTF16 *dest) {
         string_utf16_add_char(dest, value);
         pStart = endEncode;
     }
+}
+
+void strutf16_to_strutf8(String_UTF16 *src, String_UTF8 *dest) {
+    create_string_utf8(dest);
+    unsigned long i;
+    for(i = 0; i < src->length + 1; i++)
+        strutf8_add_wchar(dest, src->characteres[i]);
+}
+
+void wchar_array_to_strutf8(const wchar_t *src, String_UTF8 *dest) {
+    create_string_utf8(dest);
+    unsigned long length = wcslen(src);
+    unsigned long i;
+    for(i = 0; i < length + 1; i++)
+        strutf8_add_wchar(dest, src[i]);
 }
 
 void string_utf8_index_by_index(unsigned char *pArrayStart, unsigned char *pArrayEnd, unsigned long utfIndex, unsigned char **pStart, unsigned char **pEnd, int *bytes) {
@@ -127,17 +143,44 @@ void array_char_to_string_utf8(unsigned char *src, String_UTF8 *dest, unsigned l
     dest->length = string_utf8_length(dest);
 }
 
-void strutf8_print_hexa(String_UTF8 *utf) {
-    char count = 0;
-    unsigned long i;
-    for(i = 0; i < utf->data.length; i++) {
-        wprintf(L"%02x ", utf->bytes[i]);
-        if(count == 16) {
-            wprintf(L"\n");
-            count = 0;
-        }else count++;
+char strutf8_add_wchar(String_UTF8 *dest, wchar_t value) {
+    unsigned char *buffer = NULL;
+    char bytes = strutf8_wchar_to_byte(value, &buffer);
+    if(bytes != -1) {
+        (dest->length)++;
+        add_allocate((void **) &dest->bytes, buffer, bytes, dest->data.byteSize, &dest->data.length);
+        free(buffer);
     }
+    return bytes;
+}
 
-    if(count != 0)
-        wprintf(L"\n");
+char strutf8_wchar_to_byte(wchar_t value, unsigned char **buffer) {
+    char bytes = 0;
+    if(value <= 126) bytes = 1;
+    else if(value <= 2047) bytes = 2;
+    else if(value <= 65535) bytes = 3;
+    //else if(value <= 1114111) bytes = 4;
+    else return -1;
+    *buffer = malloc(bytes * sizeof(unsigned char));
+    if(bytes == 1) {
+        (*buffer)[0] = value & 0b01111111;
+    }else {
+        int i;
+        for(i = bytes - 1; i > 0; i--) {
+            (*buffer)[i] = (value & 0b00111111) | 0b10000000;
+            value = value >> 6;
+        }
+        switch(bytes) {
+            case 2:
+                (*buffer)[0] = (value & 0b00011111) | 0b11000000;
+                break;
+            case 3:
+                (*buffer)[0] = (value & 0b00001111) | 0b11100000;
+                break;
+            //case 4:
+            //    (*buffer)[0] = (value & 0b00000111) | 0b11110000;
+            //    break;
+        }
+    }
+    return bytes;
 }

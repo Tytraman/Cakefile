@@ -18,20 +18,6 @@ const char *STDERR = "STDERR";
 const char *STDOUT = "STDOUT";
 const char *STDIN  = "STDIN";
 
-const wchar_t FILE_SEPARATOR =
-    #ifdef _WIN32
-    L'\\';
-    #else
-    L'/';
-    #endif
-
-const wchar_t REVERSE_FILE_SEPARATOR =
-    #ifdef _WIN32
-    L'/';
-    #else
-    L'\\';
-    #endif
-
 char g_ModeLanguage = 0;
 
 unsigned int g_Mode = MODE_ALL;

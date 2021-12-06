@@ -40,42 +40,42 @@ char check_args(int argc, char **argv) {
         else if(strcasecmp(argv[1], "lines") == 0)
             g_Mode = MODE_LINES_COUNT;
         else if(strcasecmp(argv[1], "--help") == 0) {
-            wprintf(
-                L"==========[ %S ]==========\n"
-                L"Lorsqu'aucun argument n'est passé, la commande est équivalente à `cake all`.\n"
-                L"[ Arguments ]\n"
-                L"> clean : supprime tous les fichiers objets et l'exécutable.\n"
-                L"> all : compile les fichiers modifiés puis crée l'exécutable.\n"
-                L"> reset : équivalent de `cake clean` puis `cake all`.\n"
-                L"> exec : exécute le programme avec les arguments dans l'option `exec_args`.\n"
-                L"> lines : affiche le nombre de lignes de chaque fichier puis le total.\n"
-                L"> --help : affiche ce message.\n"
-                L"> --version : affiche la version installée du programme.\n"
-                L"> --generate : génère un fichier `Cakefile` avec les options par défaut.\n\n"
+            printf(
+                "==========[ %s ]==========\n"
+                "Lorsqu'aucun argument n'est passé, la commande est équivalente à `cake all`.\n"
+                "[ Arguments ]\n"
+                "> clean : supprime tous les fichiers objets et l'exécutable.\n"
+                "> all : compile les fichiers modifiés puis crée l'exécutable.\n"
+                "> reset : équivalent de `cake clean` puis `cake all`.\n"
+                "> exec : exécute le programme avec les arguments dans l'option `exec_args`.\n"
+                "> lines : affiche le nombre de lignes de chaque fichier puis le total.\n"
+                "> --help : affiche ce message.\n"
+                "> --version : affiche la version installée du programme.\n"
+                "> --generate : génère un fichier `Cakefile` avec les options par défaut.\n\n"
                 
-                L"Liste des options du fichier `Cakefile` :\n"
-                L"[ Obligatoires ]\n"
-                L"- language : langage de programmation utilisé.\n"
-                L"- obj_dir : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.\n"
-                L"- bin_dir : dossier où sera stocké l'exécutable final.\n"
-                L"- exec_name : nom de l'exécutable final.\n\n"
+                "Liste des options du fichier `Cakefile` :\n"
+                "[ Obligatoires ]\n"
+                "- language : langage de programmation utilisé.\n"
+                "- obj_dir : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.\n"
+                "- bin_dir : dossier où sera stocké l'exécutable final.\n"
+                "- exec_name : nom de l'exécutable final.\n\n"
 
-                L"[ Optionnelles ]\n"
-                L"- includes : liste des dossiers includes externes à inclure.\n"
-                L"- libs : liste des dossiers de librairies externes à inclure.\n"
-                L"- compile_options : options utilisées pendant la compilation.\n"
-                L"- link_options : options utilisées pendant le link des fichiers objets.\n"
-                L"- link_l : librairies externes à inclure.\n"
-                L"- auto_exec : définie si le programme s'exécute automatiquement après sa génération. (true/false)\n"
-                L"- exec_args : liste des arguments à passer si auto_exec est activé ou si la commande `cake exec` a été tapée.\n\n"
+                "[ Optionnelles ]\n"
+                "- includes : liste des dossiers includes externes à inclure.\n"
+                "- libs : liste des dossiers de librairies externes à inclure.\n"
+                "- compile_options : options utilisées pendant la compilation.\n"
+                "- link_options : options utilisées pendant le link des fichiers objets.\n"
+                "- link_l : librairies externes à inclure.\n"
+                "- auto_exec : définie si le programme s'exécute automatiquement après sa génération. (true/false)\n"
+                "- exec_args : liste des arguments à passer si auto_exec est activé ou si la commande `cake exec` a été tapée.\n\n"
                 
-                L"Pour plus d'infos, voir la page github : https://github.com/Tytraman/Cakefile\n"
-                L"============================\n"
+                "Pour plus d'infos, voir la page github : https://github.com/Tytraman/Cakefile\n"
+                "============================\n"
                 , PROGRAM_NAME
             );
             return 0;
         }else if(strcasecmp(argv[1], "--version") == 0) {
-            wprintf(L"%S x%S version %S\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
+            printf("%s x%s version %s\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
             return 0;
         }else if(strcasecmp(argv[1], "--generate") == 0) {
             if(GetFileAttributesW(OPTIONS_FILENAME) == 0xffffffff) {
@@ -99,10 +99,10 @@ char check_args(int argc, char **argv) {
                 fwrite(defaultCakefile, 1, 162, pCakefile);
                 fclose(pCakefile);
             }else
-                fwprintf(stderr, L"[%S] Il existe déjà un fichier `%s`.\n", PROGRAM_NAME, OPTIONS_FILENAME);
+                fprintf(stderr, "[%s] Il existe déjà un fichier `%s`.\n", PROGRAM_NAME, OPTIONS_FILENAME);
             return 0;
         }else {
-            fwprintf(stderr, L"[%S] Argument invalide, entre `cake --help` pour afficher l'aide.", PROGRAM_NAME);
+            fprintf(stderr, "[%s] Argument invalide, entre `cake --help` pour afficher l'aide.", PROGRAM_NAME);
             return 0;
         }
     }
@@ -327,7 +327,11 @@ char create_object(String_UTF16 *cFile, String_UTF16 *oFile, char *error) {
         get_last_cursor_pos();
         clear_progress_bar();
     }
-    wprintf(L"%s\n", command.characteres);
+
+    String_UTF8 consoleCommand;
+    strutf16_to_strutf8(&command, &consoleCommand);
+    printf("%s\n", consoleCommand.bytes);
+    free(consoleCommand.bytes);
     if(g_DrawProgressBar) {
         get_last_cursor_pos();
         draw_progress_bar(g_CurrentCompile + 1, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
@@ -504,20 +508,23 @@ char exec_exec(String_UTF16 *exec, unsigned long long *duration) {
     *duration = 0;
     String_UTF16 command;
     create_string_utf16(&command);
-    string_utf16_set_value(&command, L".");
-    string_utf16_add_char(&command, FILE_SEPARATOR);
+    if(!strutf16_start_with(exec, L"." FILE_SEPARATOR_STR))
+        string_utf16_set_value(&command, L"." FILE_SEPARATOR_STR);
     string_utf16_add(&command, exec->characteres);
     if(o_ExecArgs.value.characteres != NULL) {
         string_utf16_add_char(&command, L' ');
         string_utf16_add(&command, o_ExecArgs.value.characteres);
     }
 
-    wprintf(L"%s\n", command.characteres);
+    String_UTF8 consoleCommand;
+    strutf16_to_strutf8(&command, &consoleCommand);
+    printf("%s\n", consoleCommand.bytes);
+    free(consoleCommand.bytes);
     unsigned long long startTime = get_current_time_millis();
     char result;
     String_UTF16 out, err;
     if((result = execute_command(command.characteres, NULL, NULL, NULL, PRINT_STD)) != 0) {
-        wprintf(L"[%S] Erreur lors de l'exécution du programme (%d) (%lu)\n", PROGRAM_NAME, result, GetLastError());
+        printf("[%s] Erreur lors de l'exécution du programme (%d) (%lu)\n", PROGRAM_NAME, result, GetLastError());
         return 0;
     }
     *duration = get_current_time_millis() - startTime;
@@ -533,10 +540,10 @@ int main(int argc, char **argv) {
     if(GetCurrentProcessId() == processID) {
         FreeConsole();
         MessageBoxW(NULL, L"Le programme doit être exécuté depuis un terminal.", L"Erreur !", MB_OK | MB_ICONERROR);
-        return EXIT_FAILURE;
+        return 1;
     }
 
-    set_console_UTF16();
+    SetConsoleOutputCP(65001);
 
     g_Out = GetStdHandle(STD_OUTPUT_HANDLE);
     GetConsoleScreenBufferInfo(g_Out, &g_ScreenInfo);
@@ -563,7 +570,7 @@ int main(int argc, char **argv) {
     String_UTF16 fileUtf16;
     create_string_utf16(&fileUtf16);
     if(!open_utf8_file(&fileUtf8, OPTIONS_FILENAME)) {
-        fwprintf(stderr, L"Le fichier Cakefile n'existe pas dans ce dossier, fais `cake --generate` pour en créer un !\n");
+        fprintf(stderr, "Le fichier Cakefile n'existe pas dans ce dossier, fais `cake --generate` pour en créer un !\n");
         return 1;
     }
 
@@ -573,12 +580,15 @@ int main(int argc, char **argv) {
     char result = load_options(&fileUtf16);
     free(fileUtf16.characteres);
     if(result != 0) {
-        fwprintf(stderr, L"Une ou plusieurs clés obligatoires n'ont pas été trouvées.\n");
+        fprintf(stderr, "Une ou plusieurs clés obligatoires n'ont pas été trouvées.\n");
         return 1;
     }
 
     if(!selectCompiler()) {
-        fwprintf(stderr, L"Le langage \"%s\" n'est pas pris en charge...\n", o_Language.value.characteres);
+        String_UTF8 consoleCommandCompiler;
+        strutf16_to_strutf8(&o_Language.value, &consoleCommandCompiler);
+        fprintf(stderr, "Le langage \"%s\" n'est pas pris en charge...\n", consoleCommandCompiler.bytes);
+        free(consoleCommandCompiler.bytes);
         unload_options();
         return 1;
     }
@@ -599,7 +609,7 @@ int main(int argc, char **argv) {
     if(g_Mode == MODE_EXEC) {
         unsigned long long duration = 0;
         exec_exec(&exec, &duration);
-        wprintf(L"[%S] Durée d'exécution du programme : %llu ms.\n", PROGRAM_NAME, duration);
+        printf("[%s] Durée d'exécution du programme : %llu ms.\n", PROGRAM_NAME, duration);
         goto exec_end;
     }
 
@@ -617,14 +627,14 @@ int main(int argc, char **argv) {
         string_utf16_add(&dirCommand, L" *.cpp *.c++");
 
     if((commandResult = execute_command(dirCommand.characteres, &out_dirC, NULL, NULL, 0)) != 0)
-        fwprintf(stderr, L"Erreur lors de l'exécution de la commande : %d\n", commandResult);
+        fprintf(stderr, "Erreur lors de l'exécution de la commande : %d\n", commandResult);
 
     free(dirCommand.characteres);
 
     /* ---------------------------------------------------------------------------- */
 
     if(out_dirC.length == 0) {
-        fwprintf(stderr, L"Aucun fichier trouvé...\n");
+        fprintf(stderr, "Aucun fichier trouvé...\n");
         free(out_dirC.characteres);
         free_all();
         return 1;
@@ -649,12 +659,16 @@ int main(int argc, char **argv) {
     switch(g_Mode) {
         case MODE_CLEAN:{
             clean: ;
-            wprintf(L"Nettoyage...\n");
+            printf("Nettoyage...\n");
+            String_UTF8 deletion;
             for(i = 0; i < listOsize; i++) {
-                wprintf(L"Suppression de \"%s\"...\n", listO[i]->characteres);
+                strutf16_to_strutf8(listO[i], &deletion);
+                printf("Suppression de \"%s\"...\n", deletion.bytes);
                 _wremove(listO[i]->characteres);
             }
-            wprintf(L"Suppression de \"%s\"...\n", exec.characteres);
+            strutf16_to_strutf8(&exec, &deletion);
+            printf("Suppression de \"%s\"...\n", deletion.bytes);
+            free(deletion.bytes);
             _wremove(exec.characteres);
             if(g_Mode == MODE_RESET) goto reset;
             free(out_dirC.characteres);
@@ -683,7 +697,7 @@ int main(int argc, char **argv) {
             startTime = get_current_time_millis();
             if(g_NeedCompileNumber) {
                 get_last_cursor_pos();
-                wprintf(L"==========[ Compilation ]==========\n");
+                printf("==========[ Compilation ]==========\n");
                 get_last_cursor_pos();
                 g_DrawProgressBar = 1;
                 draw_progress_bar(g_CurrentCompile, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
@@ -696,7 +710,7 @@ int main(int argc, char **argv) {
                 g_DrawProgressBar = 0;
                 get_last_cursor_pos();
                 clear_progress_bar();
-                wprintf(L"===================================\n\n\n");
+                printf("===================================\n\n\n");
             }
         }
         case MODE_LINK:{
@@ -706,7 +720,7 @@ int main(int argc, char **argv) {
             }
             mkdirs(o_BinDir.value.characteres);
             if(g_Mode == MODE_LINK || (g_CompileNumber > 0 && g_CompileNumber == g_NeedCompileNumber)) {
-                wprintf(L"==========[ Link ]==========\n");
+                printf("==========[ Link ]==========\n");
                 
                 String_UTF16 linkCommand;
 
@@ -746,18 +760,21 @@ int main(int argc, char **argv) {
                     string_utf16_add_char(&linkCommand, L' ');
                     string_utf16_add(&linkCommand, o_LinkLibs.value.characteres);
                 }
-
-                wprintf(L"%s\n", linkCommand.characteres);
+                
+                String_UTF8 linkConsole;
+                strutf16_to_strutf8(&linkCommand, &linkConsole);
+                printf("%s\n", linkConsole.bytes);
+                free(linkConsole.bytes);
 
                 if((result = execute_command(linkCommand.characteres, NULL, NULL, &errorLink, PRINT_STD)) != 0)
                     error_execute_command(linkCommand.characteres, result);
                 free(linkCommand.characteres);
-                wprintf(L"============================\n\n\n");
+                printf("============================\n\n\n");
             }
             break;
         }
         case MODE_LINES_COUNT:{
-            wprintf(L"==========[ Lignes ]==========\n");
+            printf("==========[ Lignes ]==========\n");
             /* On récupère la liste de tous les fichiers .h du dossier et des sous dossiers. */
             String_UTF16 out_DirH;
             String_UTF16 dirHCommand;
@@ -770,7 +787,7 @@ int main(int argc, char **argv) {
                 string_utf16_add(&dirHCommand, L" *.hpp");
 
             if((commandResult = execute_command(dirHCommand.characteres, &out_DirH, NULL, NULL, 0)) != 0)
-                fwprintf(stderr, L"Erreur lors de l'exécution de la commande : %d\n", commandResult);
+                fprintf(stderr, "Erreur lors de l'exécution de la commande : %d\n", commandResult);
 
             free(dirHCommand.characteres);
 
@@ -787,7 +804,9 @@ int main(int argc, char **argv) {
 
             String_UTF16 ***targetList = &listH;
             unsigned long *listSize = &listHsize;
-lines_count_loop:
+lines_count_loop: ;
+            String_UTF8 target8;
+            create_string_utf8(&target8);
             for(i = 0; i < *listSize; i++) {
                 if(open_utf8_file(&sourceFile8, (*targetList)[i]->characteres)) {
                     string_utf8_to_utf16(&sourceFile8, &sourceFile16);
@@ -797,10 +816,12 @@ lines_count_loop:
                             statLines++;
                     }
                     statTotalLines += statLines;
-                    wprintf(L"%s : %lu\n", (*targetList)[i]->characteres, statLines);
+                    strutf16_to_strutf8((*targetList)[i], &target8);
+                    printf("%s : %lu\n", target8.bytes, statLines);
                     statLines = 1;
                 }
             }
+            free(target8.bytes);
             if(listSize == &listHsize) {
                 targetList = &listC;
                 listSize = &listCsize;
@@ -810,9 +831,9 @@ lines_count_loop:
                 free(listH[i]->characteres);
             free(listH);
             free(sourceFile16.characteres);
-            wprintf(
-                L"\nTotal : %llu\n"
-                L"==============================\n"
+            printf(
+                "\nTotal : %llu\n"
+                "==============================\n"
                 , statTotalLines
             );
             break;
@@ -823,37 +844,37 @@ lines_count_loop:
     // Statistiques une fois les opérations terminées
     if(g_Mode & MODE_STATS_ENABLED) {
         unsigned long long endTime = get_current_time_millis();
-        wprintf(L"==========[ Stats ]==========\n");
+        printf("==========[ Stats ]==========\n");
         switch(g_Mode) {
             default: break;
             case MODE_ALL:
             case MODE_RESET:{
                 if(g_CompileNumber > 0)
-                    wprintf(
-                        L"Fichiers compilés : %lu / %lu (%.02f%%)\n"
-                        L"Compilés%s en %llu ms.\n",
-                        g_CompileNumber, g_NeedCompileNumber, (float) ((float) g_CompileNumber * 100.0f / (float) g_NeedCompileNumber), (errorLink == 0 ? L" et linkés" : L""), endTime - startTime
+                    printf(
+                        "Fichiers compilés : %lu / %lu (%.02f%%)\n"
+                        "Compilés%s en %llu ms.\n",
+                        g_CompileNumber, g_NeedCompileNumber, (float) ((float) g_CompileNumber * 100.0f / (float) g_NeedCompileNumber), (errorLink == 0 ? " et linkés" : ""), endTime - startTime
                     );
                 else
-                    wprintf(L"Rien n'a changé...\n");
+                    printf("Rien n'a changé...\n");
                 break;
             }
             case MODE_LINK:{
                 if(errorLink == 0)
-                    wprintf(L"Linkés en %llu ms.\n", endTime - startTime);
+                    printf("Linkés en %llu ms.\n", endTime - startTime);
                 else
-                    wprintf(L"Rien n'a changé...\n");
+                    printf("Rien n'a changé...\n");
                 break;
             }
         }
-        wprintf(L"=============================\n\n");
+        printf("=============================\n\n");
     }
 
     // Exécution automatique
     if(g_AutoExec && g_CompileNumber == g_NeedCompileNumber && (errorLink == -1 || errorLink == 0)) {
         unsigned long long duration;
         exec_exec(&exec, &duration);
-        wprintf(L"[%S] Durée d'exécution du programme : %llu ms.\n", PROGRAM_NAME, duration);
+        printf("[%S] Durée d'exécution du programme : %llu ms.\n", PROGRAM_NAME, duration);
     }
 
     free(list);
