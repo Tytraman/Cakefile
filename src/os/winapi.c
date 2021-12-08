@@ -42,16 +42,10 @@ unsigned int __stdcall stdout_thread(void *pParam) {
             }
             WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buff, read, NULL, NULL);
         }
-        
-        /*
-        if(g_DrawProgressBar) {
-            get_last_cursor_pos();
-            draw_progress_bar(g_CurrentCompile + 1, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
-        }
-        */
     }
     SetEvent(data->event);
     _endthreadex(0);
+    return 0;
 }
 
 unsigned int __stdcall stderr_thread(void *pParam) {
@@ -83,16 +77,10 @@ unsigned int __stdcall stderr_thread(void *pParam) {
             }
             WriteFile(GetStdHandle(STD_ERROR_HANDLE), buff, read, NULL, NULL);
         }
-
-        /*
-        if(g_DrawProgressBar) {
-            get_last_cursor_pos();
-            draw_progress_bar(g_CurrentCompile + 1, g_NeedCompileNumber, g_ProgressBarWidthScale, g_ProgressBarFillChar, g_ProgressBarEmptyChar);
-        }
-        */
     }
     SetEvent(data->event);
     _endthreadex(0);
+    return 0;
 }
 
 char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, char *error, unsigned char flags) {
@@ -112,7 +100,6 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     dataStderr.error = error;
 
     // Création des pipes anonymes :
-    HANDLE childStdin_rd = NULL,  childStdin_wr = NULL;
     HANDLE childStdout_wr = GetStdHandle(STD_OUTPUT_HANDLE);
     HANDLE childStderr_wr = GetStdHandle(STD_ERROR_HANDLE);
 
@@ -120,26 +107,13 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     sa.nLength = sizeof(sa);
     sa.bInheritHandle = TRUE;
     sa.lpSecurityDescriptor = NULL;
-
-    // stdin
-    if(!CreatePipe(&childStdin_rd, &childStdin_wr, &sa, BUFF_SIZE))
-        return -1;
-    if(!SetHandleInformation(childStdin_wr, HANDLE_FLAG_INHERIT, 0)) {
-        CloseHandle(childStdin_rd);
-        CloseHandle(childStdin_wr);
-        return -2;
-    }
     
     // stdout
     dataStdout.event = CreateEventA(NULL, TRUE, FALSE, NULL);
     if(!CreatePipe(&dataStdout.pipe, &childStdout_wr, &sa, BUFF_SIZE)) {
-        CloseHandle(childStdin_rd);
-        CloseHandle(childStdin_wr);
         return -3;
     }
     if(!SetHandleInformation(dataStdout.pipe, HANDLE_FLAG_INHERIT, 0)) {
-        CloseHandle(childStdin_rd);
-        CloseHandle(childStdin_wr);
         CloseHandle(dataStdout.pipe);
         CloseHandle(childStdout_wr);
         return -4;
@@ -148,15 +122,11 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     // stderr
     dataStderr.event = CreateEventA(NULL, TRUE, FALSE, NULL);
     if(!CreatePipe(&dataStderr.pipe, &childStderr_wr, &sa, BUFF_SIZE)) {
-        CloseHandle(childStdin_rd);
-        CloseHandle(childStdin_wr);
         CloseHandle(dataStdout.pipe);
         CloseHandle(childStdout_wr);
         return -5;
     }
     if(!SetHandleInformation(dataStderr.pipe, HANDLE_FLAG_INHERIT, 0)) {
-        CloseHandle(childStdin_rd);
-        CloseHandle(childStdin_wr);
         CloseHandle(dataStdout.pipe);
         CloseHandle(childStdout_wr);
         CloseHandle(dataStderr.pipe);
@@ -174,10 +144,10 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     PROCESS_INFORMATION pi = { 0 };
     STARTUPINFOW si = { 0 };
     si.cb = sizeof(si);
-    si.hStdInput  = childStdin_rd;
+    si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
     si.hStdOutput = childStdout_wr;
     si.hStdError  = childStderr_wr;
-    si.dwFlags    = STARTF_USESTDHANDLES;
+    si.dwFlags   |= STARTF_USESTDHANDLES;
 
     if(!CreateProcessW(
         NULL,           // Nom de l'application
@@ -192,8 +162,6 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
         &pi             // PROCESS_INFORMATION
     ))
     {
-        CloseHandle(childStdin_rd);
-        CloseHandle(childStdin_wr);
         CloseHandle(dataStdout.pipe);
         CloseHandle(childStdout_wr);
         CloseHandle(dataStderr.pipe);
@@ -202,7 +170,6 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
         return -7;
     }
 
-    CloseHandle(childStdin_rd);
     CloseHandle(childStdout_wr);
     CloseHandle(childStderr_wr);
 
@@ -217,7 +184,6 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     CloseHandle(stdoutThread);
     CloseHandle(dataStdout.pipe);
     
-
     WaitForSingleObject(dataStderr.event, INFINITE);
     CloseHandle(dataStderr.event);
     CloseHandle(stderrThread);
@@ -249,8 +215,6 @@ char execute_command(wchar_t *command, String_UTF16 *out, String_UTF16 *err, cha
     }
     free(dataStdout.buff);
     free(dataStderr.buff);
-
-    CloseHandle(childStdin_wr);
     free(commandCopy);
     return 0;
 }
