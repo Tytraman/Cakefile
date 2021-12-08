@@ -11,6 +11,14 @@
 #include "include/os/winapi.h"
 #include "include/funcs.h"
 
+
+/*
+        std::cin ne fonctionne pas en faisant `cake exec` - problème de pipe ? 
+        bug UTF-8 lors de la suppression des fichiers quand la commande `cake clean` est jouée.
+*/
+
+
+
 char check_args(int argc, char **argv);
 unsigned long list_files(String_UTF16 ***listDest, String_UTF16 *src);
 unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src);
@@ -142,7 +150,7 @@ unsigned long list_o_files(String_UTF16 ***listDest, String_UTF16 *src) {
     unsigned long number = list_files(listDest, &srcCopy);
     free(srcCopy.characteres);
 
-    // Dossier obj à ajouter devant le chemin de chaque fichier n'ayant pas le dossier src
+    // Dossier obj à ajouter
     String_UTF16 insertObj;
     create_string_utf16(&insertObj);
     string_utf16_set_value(&insertObj, o_ObjDir.value.characteres);

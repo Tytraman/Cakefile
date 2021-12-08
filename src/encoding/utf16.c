@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <string.h>
 
 void set_console_UTF16() {
     // On met la console en UTF16 pour pouvoir écrire avec de l'unicode
@@ -50,7 +51,7 @@ void string_utf16_add(String_UTF16 *utf, wchar_t *str) {
 }
 
 void string_utf16_add_char(String_UTF16 *utf, wchar_t c) {
-    utf->length += 1;
+    (utf->length)++;
     utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
     memcpy(&utf->characteres[utf->length - 1], &c, sizeof(wchar_t));
     utf->characteres[utf->length] = L'\0';
@@ -200,10 +201,10 @@ char __strutf16_replace(String_UTF16 *utf, wchar_t *ptr, wchar_t *old, wchar_t *
     if(oldLength > replacementLength) {
         memcpy(ptr + replacementLength, ptr + oldLength, (utf->length - ((ptr - utf->characteres) + oldLength)) * sizeof(wchar_t) + sizeof(wchar_t));
         memcpy(ptr, replacement, replacementLength * sizeof(wchar_t));
-        utf->length -= oldLength - replacementLength;
+        (utf->length) -= (oldLength - replacementLength);
         utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
     }else if(oldLength < replacementLength) {
-        utf->length += replacementLength - oldLength;
+        (utf->length) += (replacementLength - oldLength);
         utf->characteres = (wchar_t *) realloc(utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
         memcpy(ptr + replacementLength, ptr + oldLength, (utf->length - ((ptr - utf->characteres) + oldLength)) * sizeof(wchar_t) + sizeof(wchar_t));
         memcpy(ptr, replacement, replacementLength * sizeof(wchar_t));
@@ -224,7 +225,13 @@ char strutf16_replace_from_end(String_UTF16 *utf, wchar_t *old, wchar_t *replace
 void string_utf16_insert(String_UTF16 *utf, wchar_t *str) {
     size_t length = wcslen(str);
     utf->characteres = (wchar_t *) realloc(utf->characteres, (utf->length + length) * sizeof(wchar_t) + sizeof(wchar_t));
+
+    // Déplacement vers la droite de la chaîne déjà existante :
     memcpy(utf->characteres + length, utf->characteres, utf->length * sizeof(wchar_t) + sizeof(wchar_t));
+
+    utf->length += length;
+
+    // Ajout de la nouvelle chaîne à gauche :
     memcpy(utf->characteres, str, length * sizeof(wchar_t));
 }
 

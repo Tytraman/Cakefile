@@ -57,8 +57,9 @@ void string_utf8_to_utf16(String_UTF8 *src, String_UTF16 *dest) {
 void strutf16_to_strutf8(String_UTF16 *src, String_UTF8 *dest) {
     create_string_utf8(dest);
     unsigned long i;
-    for(i = 0; i < src->length + 1; i++)
+    for(i = 0; i < src->length; i++)
         strutf8_add_wchar(dest, src->characteres[i]);
+    strutf8_add_wchar(dest, L'\0');
 }
 
 void wchar_array_to_strutf8(const wchar_t *src, String_UTF8 *dest) {
