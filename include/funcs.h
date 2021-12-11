@@ -8,4 +8,6 @@ void clear_progress_bar();
 
 void get_last_cursor_pos();
 
+char is_double_clicked();
+
 #endif

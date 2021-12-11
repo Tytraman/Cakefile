@@ -3,7 +3,9 @@
 
 #include "option.h"
 
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
 /*
 
@@ -29,8 +31,10 @@
 #define C_LANGUAGE   1
 #define CPP_LANGUAGE 2
 
+#ifdef _WIN32
 extern HANDLE g_Out;
 extern CONSOLE_SCREEN_BUFFER_INFO g_ScreenInfo;
+#endif
 
 extern short g_LastX;
 extern short g_LastY;
@@ -50,7 +54,7 @@ extern const char *STDOUT;
 extern const char *STDIN;
 
 extern unsigned int g_Mode;
-extern BOOL g_AutoExec;
+extern char g_AutoExec;
 
 extern unsigned long g_NeedCompileNumber;
 extern unsigned long g_CompileNumber;

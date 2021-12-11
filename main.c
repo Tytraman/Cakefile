@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
 #include "include/global.h"
 #include "include/error.h"
@@ -8,16 +11,10 @@
 #include "include/encoding/utf16.h"
 #include "include/file/file_utils.h"
 #include "include/memory/memory.h"
+#ifdef _WIN32
 #include "include/os/winapi.h"
+#endif
 #include "include/funcs.h"
-
-
-/*
-        std::cin ne fonctionne pas en faisant `cake exec` - problème de pipe ? 
-        bug UTF-8 lors de la suppression des fichiers quand la commande `cake clean` est jouée.
-*/
-
-
 
 char check_args(int argc, char **argv);
 unsigned long list_files(String_UTF16 ***listDest, String_UTF16 *src);
@@ -106,8 +103,12 @@ char check_args(int argc, char **argv) {
                 FILE *pCakefile = _wfopen(OPTIONS_FILENAME, L"wb");
                 fwrite(defaultCakefile, 1, 162, pCakefile);
                 fclose(pCakefile);
-            }else
-                fprintf(stderr, "[%s] Il existe déjà un fichier `%s`.\n", PROGRAM_NAME, OPTIONS_FILENAME);
+            }else {
+                String_UTF8 filename8;
+                wchar_array_to_strutf8(OPTIONS_FILENAME, &filename8);
+                fprintf(stderr, "[%s] Il existe déjà un fichier `%s`.\n", PROGRAM_NAME, filename8.bytes);
+                free(filename8.bytes);
+            }
             return 0;
         }else {
             fprintf(stderr, "[%s] Argument invalide, entre `cake --help` pour afficher l'aide.", PROGRAM_NAME);
@@ -542,16 +543,12 @@ char exec_exec(String_UTF16 *exec, unsigned long long *duration) {
 
 int main(int argc, char **argv) {
     // On vérifie que le programme est exécuté via un terminal, et pas en double cliquant dessus
-    HWND consoleWnd = GetConsoleWindow();
-    DWORD processID;
-    GetWindowThreadProcessId(consoleWnd, &processID);
-    if(GetCurrentProcessId() == processID) {
-        FreeConsole();
-        MessageBoxW(NULL, L"Le programme doit être exécuté depuis un terminal.", L"Erreur !", MB_OK | MB_ICONERROR);
+    if(is_double_clicked())
         return 1;
-    }
 
+    #ifdef _WIN32
     SetConsoleOutputCP(65001);
+    #endif
 
     g_Out = GetStdHandle(STD_OUTPUT_HANDLE);
     GetConsoleScreenBufferInfo(g_Out, &g_ScreenInfo);

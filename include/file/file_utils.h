@@ -4,7 +4,6 @@
 #include "../encoding/utf8.h"
 
 #include <stddef.h>
-#include <windows.h>
 
 char file_buffer(unsigned char **buffer, const wchar_t *filepath, unsigned long long *size);
 

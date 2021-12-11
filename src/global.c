@@ -4,8 +4,10 @@ const char *VERSION             =  "2.3.0";
 const char *PROGRAM_NAME        =  "Cake";
 const wchar_t *OPTIONS_FILENAME = L"Cakefile";
 
+#ifdef _WIN32
 HANDLE g_Out = NULL;
 CONSOLE_SCREEN_BUFFER_INFO g_ScreenInfo = { 0 };
+#endif
 
 short g_LastX = 0;
 short g_LastY = 0;
@@ -21,7 +23,7 @@ const char *STDIN  = "STDIN";
 char g_ModeLanguage = 0;
 
 unsigned int g_Mode = MODE_ALL;
-BOOL g_AutoExec = FALSE;
+char g_AutoExec = 0;
 
 unsigned long g_NeedCompileNumber = 0;
 unsigned long g_CompileNumber = 0;

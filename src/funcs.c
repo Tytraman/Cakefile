@@ -103,3 +103,17 @@ void get_last_cursor_pos() {
     g_LastX = g_ScreenInfo.dwCursorPosition.X;
     g_LastY = g_ScreenInfo.dwCursorPosition.Y;
 }
+
+char is_double_clicked() {
+    #ifdef _WIN32
+    HWND consoleWnd = GetConsoleWindow();
+    DWORD processID;
+    GetWindowThreadProcessId(consoleWnd, &processID);
+    if(GetCurrentProcessId() == processID) {
+        FreeConsole();
+        MessageBoxW(NULL, L"Le programme doit être exécuté depuis un terminal.", L"Erreur !", MB_OK | MB_ICONERROR);
+        return 1;
+    }
+    #endif
+    return 0;
+}
