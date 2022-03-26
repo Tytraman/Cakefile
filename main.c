@@ -5,6 +5,7 @@
 #include "include/libcake/file.h"
 #include "include/libcake/win.h"
 #include "include/libcake/process.h"
+#include "include/libcake/time.h"
 
 #include "global.h"
 #include "cakefile.h"
@@ -42,6 +43,8 @@ int main(int argc, char *argv[])
     }
 
     srand(time(NULL));
+    ulonglong compileTimeStart = 0, compileTimeEnd = 0;
+    ulonglong linkTimeStart = 0, linkTimeEnd = 0;
     ulonglong i;
 
     Cake_List_String_UTF8 *oFiles = NULL;
@@ -150,6 +153,7 @@ int main(int argc, char *argv[])
 
         if(g_NeedCompileNumber > 0) {
             printf("[===== Compilation =====]\n");
+            compileTimeStart = cake_get_current_time_millis();
             for(i = 0; i < srcFiles->data.length; ++i) {
                 if(srcFiles->list[i]->bytes[0] == 3)
                     continue;
@@ -180,6 +184,7 @@ int main(int argc, char *argv[])
                         g_CompileNumber++;
                 }
             }
+            compileTimeEnd = cake_get_current_time_millis();
         }
         
         cake_free_strutf8(finaleCompileCommand);
@@ -189,6 +194,8 @@ int main(int argc, char *argv[])
         if(!(g_Mode & MODE_LINK_ENABLED))
             cake_free_list_strutf8(oFiles);
     }
+
+    cake_bool linkOk;
 
     // Link des fichiers objets
     if(g_Mode & MODE_LINK_ENABLED) {
@@ -270,9 +277,12 @@ int main(int argc, char *argv[])
                     if(!cake_create_process(linkCommand->bytes, &process, NULL, NULL, NULL))
                         fprintf(stderr, "Une erreur est survenue à la création du processus...\n");
                     else {
+                        linkTimeStart = cake_get_current_time_millis();
                         cake_process_start(process);
                         cake_exit_code retCode;
                         cake_process_wait(&process, retCode);
+                        linkTimeEnd = cake_get_current_time_millis();
+                        linkOk = (retCode == 0);
                     }
                     break;
                 }
@@ -290,8 +300,46 @@ skip_link:
     if(libs != NULL)
         cake_free_strutf8(libs);
 
+    if(g_Mode & MODE_STATS_ENABLED) {
+        Cake_String_UTF8 *coolStat = cake_strutf8("[===== Stats =====]\n");
+        if(g_Mode & MODE_COMPILE_ENABLED) {
+            ulonglong t = compileTimeEnd - compileTimeStart;
+            uchar *secBuffer    = cake_ulonglong_to_char_array_dyn(t / 1000);
+            uchar *millisBuffer = cake_ulonglong_to_char_array_dyn(t % 1000);
+            uchar *needCompilerNumberBuffer = cake_ulonglong_to_char_array_dyn(g_NeedCompileNumber);
+            uchar *compileNumberBuffer      = cake_ulonglong_to_char_array_dyn(g_CompileNumber);
+            cake_strutf8_add_char_array(coolStat, "Compilation: ");
+            cake_strutf8_add_char_array(coolStat, compileNumberBuffer);
+            cake_strutf8_add_char_array(coolStat, "/");
+            cake_strutf8_add_char_array(coolStat, needCompilerNumberBuffer);
+            cake_strutf8_add_char_array(coolStat, " [");
+            cake_strutf8_add_char_array(coolStat, secBuffer);
+            cake_strutf8_add_char_array(coolStat, ".");
+            cake_strutf8_add_char_array(coolStat, millisBuffer);
+            cake_strutf8_add_char_array(coolStat, "s]\n");
+            free(secBuffer);
+            free(millisBuffer);
+            free(needCompilerNumberBuffer);
+            free(compileNumberBuffer);
+        }
+        if(g_Mode & MODE_LINK_ENABLED) {
+            ulonglong t = linkTimeEnd - linkTimeStart;
+            uchar *secBuffer    = cake_ulonglong_to_char_array_dyn(t / 1000);
+            uchar *millisBuffer = cake_ulonglong_to_char_array_dyn(t % 1000);
+            cake_strutf8_add_char_array(coolStat, "Link: ");
+            cake_strutf8_add_char_array(coolStat, (linkOk ? "OK [" : "Erreur ["));
+            cake_strutf8_add_char_array(coolStat, secBuffer);
+            cake_strutf8_add_char_array(coolStat, ".");
+            cake_strutf8_add_char_array(coolStat, millisBuffer);
+            cake_strutf8_add_char_array(coolStat, "s]\n");
+            free(secBuffer);
+            free(millisBuffer);
+        }
+        printf(coolStat->bytes);
+        cake_free_strutf8(coolStat);
+    }
+
     cake_free_file_object(config);
-    printf("Au revoir\n");
 
     #ifdef CAKE_WINDOWS
     SetConsoleOutputCP(consoleOutputCP);

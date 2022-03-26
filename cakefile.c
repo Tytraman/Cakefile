@@ -19,50 +19,25 @@ cake_bool check_args(int argc, cake_char *argv[]) {
         for(i = 1; i < argc; ++i) {
             if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("all")) == 0)
                 g_Mode = MODE_ALL;
-            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("reset")) == 0)
+            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("reset"))   == 0)
                 g_Mode = MODE_RESET;
-            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("link")) == 0)
-                g_Mode &= MODE_LINK_ENABLED;
-            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("clean")) == 0)
+            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("link"))    == 0)
+                g_Mode &= MODE_LINK;
+            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("clean"))   == 0)
                 g_Mode &= MODE_CLEAN_ENABLED;
-            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("exec")) == 0)
+            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("exec"))    == 0)
                 g_Mode = MODE_EXEC;
-            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("lines")) == 0)
+            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("lines"))   == 0)
                 g_Mode = MODE_LINES_COUNT;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("--quiet")) == 0)
                 g_Quiet = cake_true;
-            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("--help")) == 0) {
+            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("--help"))  == 0) {
                 if(help) {
                     help = cake_false;
+                    // TODO: faire le message d'aide
                     printf(
                         "==========[ %s ]==========\n"
-                        "Lorsqu'aucun argument n'est passé, la commande est équivalente à `cake all`.\n"
-                        "[ Arguments ]\n"
-                        "> clean : supprime tous les fichiers objets et l'exécutable.\n"
-                        "> all : compile les fichiers modifiés puis crée l'exécutable.\n"
-                        "> reset : équivalent de `cake clean` puis `cake all`.\n"
-                        "> exec : exécute le programme avec les arguments dans l'option `exec_args`.\n"
-                        "> lines : affiche le nombre de lignes de chaque fichier puis le total.\n"
-                        "> --help : affiche ce message.\n"
-                        "> --version : affiche la version installée du programme.\n"
-                        "> --generate : génère un fichier `Cakefile` avec les options par défaut.\n\n"
-                        
-                        "Liste des options du fichier `Cakefile` :\n"
-                        "[ Obligatoires ]\n"
-                        "- language : langage de programmation utilisé.\n"
-                        "- obj_dir : dossier où sont stockés les fichiers `.o` une fois les fichiers `.c` compilés.\n"
-                        "- bin_dir : dossier où sera stocké l'exécutable final.\n"
-                        "- exec_name : nom de l'exécutable final.\n\n"
-
-                        "[ Optionnelles ]\n"
-                        "- includes : liste des dossiers includes externes à inclure.\n"
-                        "- libs : liste des dossiers de librairies externes à inclure.\n"
-                        "- compile_options : options utilisées pendant la compilation.\n"
-                        "- link_options : options utilisées pendant le link des fichiers objets.\n"
-                        "- link_libs : librairies externes à inclure.\n"
-                        "- auto_exec : définie si le programme s'exécute automatiquement après sa génération. (true/false)\n"
-                        "- exec_args : liste des arguments à passer si auto_exec est activé ou si la commande `cake exec` a été tapée.\n\n"
-                        
+                        "Rien pour le moment...\n"
                         "Pour plus d'infos, voir la page github : https://github.com/Tytraman/Cakefile\n"
                         "============================\n"
                         , PROGRAM_NAME
