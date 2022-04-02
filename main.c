@@ -6,9 +6,11 @@
 #include "include/libcake/win.h"
 #include "include/libcake/process.h"
 #include "include/libcake/time.h"
+#include "include/libcake/console.h"
 
 #include "global.h"
 #include "cakefile.h"
+
 
 #ifdef CAKE_WINDOWS
 int wmain(int argc, wchar_t *argv[])
@@ -90,7 +92,17 @@ int main(int argc, char *argv[])
                 cake_list_strutf8_add_char_array(srcExtensions, ".C");
                 if(g_Mode & MODE_COMPILE_ENABLED) {
                     cake_strutf8_add_char_array(compileCommand, " \"{SRC}\" -c");
-                    if(o_CompileOptions != NULL && o_CompileOptions->value->length > 0) {
+
+                    Cake_FileObjectElement *osCompileOptions = NULL;
+                    #ifdef CAKE_WINDOWS
+                    osCompileOptions = cake_fileobject_get_element(config, "windows.compile_options");
+                    #else
+                    osCompileOptions = cake_fileobject_get_element(config, "linux.compile_options");
+                    #endif
+                    if(osCompileOptions != NULL && osCompileOptions->value->length > 0) {
+                        cake_strutf8_add_char_array(compileCommand, " ");
+                        cake_strutf8_add_char_array(compileCommand, osCompileOptions->value->bytes);
+                    }else if(o_CompileOptions != NULL && o_CompileOptions->value->length > 0) {
                         cake_strutf8_add_char_array(compileCommand, " ");
                         cake_strutf8_add_char_array(compileCommand, o_CompileOptions->value->bytes);
                     }
@@ -264,7 +276,16 @@ int main(int argc, char *argv[])
                         cake_fdio_write(linkFd, sizeof(space), bytesWritten, &space);
                     }
                     cake_fdio_close(linkFd);
-                    if(o_LinkOptions != NULL && o_LinkOptions->value->length > 0) {
+                    Cake_FileObjectElement *osLinkOptions = NULL;
+                    #ifdef CAKE_WINDOWS
+                    osLinkOptions = cake_fileobject_get_element(config, "windows.link_options");
+                    #else
+                    osLinkOptions = cake_fileobject_get_element(config, "linux.link_options");
+                    #endif
+                    if(osLinkOptions != NULL && osLinkOptions->value->length > 0) {
+                        cake_strutf8_add_char_array(linkCommand, " ");
+                        cake_strutf8_add_char_array(linkCommand, osLinkOptions->value->bytes);
+                    }else if(o_LinkOptions != NULL && o_LinkOptions->value->length > 0) {
                         cake_strutf8_add_char_array(linkCommand, " ");
                         cake_strutf8_add_char_array(linkCommand, o_LinkOptions->value->bytes);
                     }
@@ -332,7 +353,7 @@ skip_link:
             uchar *secBuffer    = cake_ulonglong_to_char_array_dyn(t / 1000);
             uchar *millisBuffer = cake_ulonglong_to_char_array_dyn(t % 1000);
             cake_strutf8_add_char_array(coolStat, "Link: ");
-            cake_strutf8_add_char_array(coolStat, (linkOk == 1 ? "OK [" : (linkOk == 2 ? "[" : "Erreur [")));
+            cake_strutf8_add_char_array(coolStat, (linkOk == 1 ? CONSOLE_FG_GREEN CONSOLE_BOLD "OK" CONSOLE_RESET " [" : (linkOk == 2 ? "Non effectué [" : CONSOLE_FG_RED CONSOLE_BOLD "Erreur" CONSOLE_RESET " [")));
             cake_strutf8_add_char_array(coolStat, secBuffer);
             cake_strutf8_add_char_array(coolStat, ".");
             cake_strutf8_add_char_array(coolStat, millisBuffer);
@@ -343,7 +364,6 @@ skip_link:
         printf(coolStat->bytes);
         cake_free_strutf8(coolStat);
     }
-
     cake_free_fileobject(config);
 
     #ifdef CAKE_WINDOWS
