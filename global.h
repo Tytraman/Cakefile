@@ -55,17 +55,17 @@ extern cake_bool g_Quiet;
 // Chemin actuel.
 extern Cake_String_UTF8 *g_CurrentDir;
 
-extern Cake_FileObjectElement   *o_Language;       // Obligatoire
-extern Cake_FileObjectElement   *o_ObjDir;         // Obligatoire
-extern Cake_FileObjectElement   *o_BinDir;         // Obligatoire
-extern Cake_FileObjectElement   *o_Compiler;       // Obligatoire
-extern Cake_FileObjectElement   *o_ExecName;       // Obligatoire
-extern Cake_FileObjectContainer *o_Includes;
-extern Cake_FileObjectContainer *o_Libs;
-extern Cake_FileObjectElement   *o_CompileOptions;
-extern Cake_FileObjectElement   *o_LinkOptions;
-extern Cake_FileObjectElement   *o_LinkLibs;
-extern Cake_FileObjectElement   *o_AutoExec;
-extern Cake_FileObjectElement   *o_ExecArgs;
+extern Cake_FileObjectElement *o_Language;
+extern Cake_FileObjectElement *o_ObjDir;
+extern Cake_FileObjectElement *o_BinDir;
+extern Cake_FileObjectElement *o_Compiler;
+extern Cake_FileObjectElement *o_ExecName;
+extern Cake_List_String_UTF8  *o_Includes;
+extern Cake_List_String_UTF8  *o_Libs;
+extern Cake_FileObjectElement *o_CompileOptions;
+extern Cake_FileObjectElement *o_LinkOptions;
+extern Cake_FileObjectElement *o_LinkLibs;
+extern Cake_FileObjectElement *o_AutoExec;
+extern Cake_FileObjectElement *o_ExecArgs;
 
 #endif

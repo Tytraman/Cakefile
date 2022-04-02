@@ -4,6 +4,8 @@
 #include "include/libcake/def.h"
 #include "include/libcake/strutf8.h"
 #include "include/libcake/fileobject.h"
+#include "include/libcake/fdio.h"
+
 
 /*
         Vérifie les arguments passés à la commande.
@@ -21,5 +23,7 @@ void print_missing_option(const uchar *option, const uchar *defaultValue);
 void print_required_option(const uchar *option);
 
 cake_bool get_fileobject_elements(Cake_FileObject *config);
+
+cake_bool check_includes(cake_fd srcFd, cake_fd oFd, Cake_String_UTF8 *srcFile);
 
 #endif

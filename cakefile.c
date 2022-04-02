@@ -118,7 +118,7 @@ void print_required_option(const uchar *option) {
 
 cake_bool get_fileobject_elements(Cake_FileObject *config) {
     const uchar *kLanguage = "language";
-    o_Language = cake_file_object_get_element(config, kLanguage);
+    o_Language = cake_fileobject_get_element(config, kLanguage);
     if(o_Language == NULL || o_Language->value->length == 0) {
         cake_char_array_to_strutf8("c", o_Language->value);
         print_missing_option(kLanguage, o_Language->value->bytes);
@@ -132,12 +132,12 @@ cake_bool get_fileobject_elements(Cake_FileObject *config) {
         g_ModeLanguage = CPP_LANGUAGE;
     else {
         fprintf(stderr, "Le langage de programmation `%s` n'est pas supporté.\n", o_Language->value->bytes);
-        cake_free_file_object(config);
+        cake_free_fileobject(config);
         return cake_false;
     }
 
     const uchar *kObjDir = "obj_dir";
-    o_ObjDir = cake_file_object_get_element(config, kObjDir);
+    o_ObjDir = cake_fileobject_get_element(config, kObjDir);
     if(o_ObjDir == NULL || o_ObjDir->value->length == 0) {
         cake_char_array_to_strutf8("obj", o_ObjDir->value);
         print_missing_option(kObjDir, o_ObjDir->value->bytes);
@@ -145,7 +145,7 @@ cake_bool get_fileobject_elements(Cake_FileObject *config) {
     cake_strutf8_add_char_array(o_ObjDir->value, FILE_SEPARATOR_CHAR_STR);  // obj/
 
     const uchar *kBinDir = "bin_dir";
-    o_BinDir = cake_file_object_get_element(config, kBinDir);
+    o_BinDir = cake_fileobject_get_element(config, kBinDir);
     if(o_BinDir == NULL || o_BinDir->value->length == 0) {
         cake_char_array_to_strutf8("bin", o_BinDir->value);
         print_missing_option(kBinDir, o_BinDir->value->bytes);
@@ -154,14 +154,14 @@ cake_bool get_fileobject_elements(Cake_FileObject *config) {
 
     // L'option de compilateur est obligatoire
     const uchar *kCompiler = "compiler";
-    o_Compiler = cake_file_object_get_element(config, kCompiler);
+    o_Compiler = cake_fileobject_get_element(config, kCompiler);
     if(o_Compiler == NULL || o_Compiler->value->length == 0) {
         print_required_option(kCompiler);
         return cake_false;
     }
 
     const uchar *kExecName = "exec_name";
-    o_ExecName = cake_file_object_get_element(config, kExecName);
+    o_ExecName = cake_fileobject_get_element(config, kExecName);
     if(o_ExecName == NULL || o_ExecName->value->length == 0) {
         cake_char_array_to_strutf8(
             #ifdef CAKE_WINDOWS
@@ -174,14 +174,20 @@ cake_bool get_fileobject_elements(Cake_FileObject *config) {
         print_missing_option(kExecName, o_ExecName->value->bytes);
     }
 
-    o_Includes       = cake_file_object_get_container(config, "includes");
-    o_Libs           = cake_file_object_get_container(config, "libs");
-    o_CompileOptions = cake_file_object_get_element(config, "compile_options");
-    o_LinkOptions    = cake_file_object_get_element(config, "link_options");
-    o_LinkLibs       = cake_file_object_get_element(config, "link_libs");
+    Cake_FileObjectContainer *cont = cake_fileobject_get_container(config, "includes");
+    if(cont != NULL)
+        o_Includes = cont->strList;
+    
+    cont = cake_fileobject_get_container(config, "libs");
+    if(cont != NULL)
+        o_Libs = cont->strList;
+
+    o_CompileOptions = cake_fileobject_get_element(config, "compile_options");
+    o_LinkOptions    = cake_fileobject_get_element(config, "link_options");
+    o_LinkLibs       = cake_fileobject_get_element(config, "link_libs");
 
     const uchar *kAutoExec = "auto_exec";
-    o_AutoExec = cake_file_object_get_element(config, kAutoExec);
+    o_AutoExec = cake_fileobject_get_element(config, kAutoExec);
     if(o_AutoExec == NULL || o_AutoExec->value->length == 0) {
         cake_char_array_to_strutf8("false", o_AutoExec->value);
         print_missing_option(kAutoExec, o_AutoExec->value->bytes);
@@ -196,6 +202,72 @@ cake_bool get_fileobject_elements(Cake_FileObject *config) {
         // g_AutoExec = cake_false dans global.c
     }
 
-    o_ExecArgs = cake_file_object_get_element(config, "exec_args");
+    o_ExecArgs = cake_fileobject_get_element(config, "exec_args");
     return cake_true;
+}
+
+// TODO: vérifier les includes dans les includes
+cake_bool check_includes(cake_fd srcFd, cake_fd oFd, Cake_String_UTF8 *srcFile) {
+    Cake_String_UTF8 *src = cake_strutf8("");
+    cake_fdio_mem_copy_strutf8(src, srcFd, CAKE_BUFF_SIZE);
+    ulonglong internalIndex = 0;
+    uchar *lastPtr = src->bytes, *ptr;
+    while(cake_strutf8_search_from_start(src, "#inc" "lude", &internalIndex) != NULL) {
+        ptr = &src->bytes[internalIndex];
+        // Si le mot-clé include est trouvé
+        while(1) {
+            if(internalIndex == src->data.length) {
+                cake_free_strutf8(src);
+                return cake_false;
+            }
+            // Si on trouve un include perso
+            if(*ptr == '"') {
+                ptr++;
+                internalIndex++;
+                lastPtr = ptr;
+                while(1) {
+                    if(internalIndex == src->data.length) {
+                        cake_free_strutf8(src);
+                        return cake_false;
+                    }   
+                    if(*ptr == '"') {
+                        *ptr = '\0';
+
+                        // On vérifie si l'include a été modifié depuis la dernière compilation
+                        Cake_String_UTF8 *filename = cake_strutf8("");
+                        cake_strutf8_copy(filename, srcFile);
+                        ulonglong slashInternalIndex = filename->data.length - 1;
+                        uchar *slashPtr = cake_strutf8_search_from_end(filename, FILE_SEPARATOR_CHAR_STR, &slashInternalIndex);
+                        if(slashPtr != NULL)
+                            cake_strutf8_remove_from_to_internal(filename, slashInternalIndex + 2, filename->data.length);
+                        cake_strutf8_add_char_array(filename, lastPtr);
+
+                        cake_fd hFd = cake_fdio_open_file(filename->bytes, CAKE_FDIO_ACCESS_READ, CAKE_FDIO_SHARE_READ, CAKE_FDIO_OPEN_IF_EXISTS, CAKE_FDIO_ATTRIBUTE_NORMAL);
+                        cake_free_strutf8(filename);
+                        if(hFd != CAKE_FDIO_ERROR_OPEN) {
+                            // Si le fichier inclu a été modifié plus récemment que le fichier compilé, alors on recompile
+                            if(cake_fdio_compare_time(hFd, oFd, CAKE_FDIO_COMPARE_LAST_WRITE_TIME) == CAKE_FDIO_NEWER) {
+                                cake_fdio_close(hFd);
+                                return cake_true;
+                            }
+                            cake_fdio_close(hFd);
+                        }
+
+                        internalIndex++;
+                        goto end_first_loop;
+                    }
+                    internalIndex++;
+                    ptr++;
+                }
+            }else if(*ptr == '\n') {
+                internalIndex++;
+                goto end_first_loop;
+            }
+            ptr++;
+            internalIndex++;
+        }
+    end_first_loop: ;
+    }
+    cake_free_strutf8(src);
+    return cake_false;
 }

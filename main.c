@@ -31,14 +31,14 @@ int main(int argc, char *argv[])
         return 0;
 
     // Chargement des options :
-    Cake_FileObject *config = cake_file_object_load(OPTIONS_FILENAME);
+    Cake_FileObject *config = cake_fileobject_load(OPTIONS_FILENAME);
     if(config == NULL) {
         fprintf(stderr, "Fichier `%s` inexistant.\n", OPTIONS_FILENAME);
         return 1;
     }
 
     if(!get_fileobject_elements(config)) {
-        cake_free_file_object(config);
+        cake_free_fileobject(config);
         return 1;
     }
 
@@ -56,17 +56,17 @@ int main(int argc, char *argv[])
     ) {
         if(o_Includes != NULL) {
             includes = cake_strutf8("");
-            for(i = 0; i < o_Includes->elements.length; ++i) {
+            for(i = 0; i < o_Includes->data.length; ++i) {
                 cake_strutf8_add_char_array(includes, " -I\"");
-                cake_strutf8_add_char_array(includes, o_Includes->elements.list[i]->key->bytes);
+                cake_strutf8_add_char_array(includes, o_Includes->list[i]->bytes);
                 cake_strutf8_add_char_array(includes, "\"");
             }
         }
         if(o_Libs != NULL) {
             libs = cake_strutf8("");
-            for(i = 0; i < o_Libs->elements.length; ++i) {
+            for(i = 0; i < o_Libs->data.length; ++i) {
                 cake_strutf8_add_char_array(libs, " -L\"");
-                cake_strutf8_add_char_array(libs, o_Libs->elements.list[i]->key->bytes);
+                cake_strutf8_add_char_array(libs, o_Libs->list[i]->bytes);
                 cake_strutf8_add_char_array(libs, "\"");
             }
         }
@@ -126,35 +126,40 @@ int main(int argc, char *argv[])
         ulonglong tempInternalIndex;
         uchar *ptr;
         Cake_String_UTF8 *finaleCompileCommand = cake_strutf8("");
-        cake_fd fdSrc;
-        cake_fd fdO;
+        cake_fd srcFd;
+        cake_fd oFd;
 
         for(i = 0; i < oFiles->data.length; ++i) {
             // Si le fichier doit être compilé
-            fdSrc = cake_fdio_open_file(srcFiles->list[i]->bytes, CAKE_FDIO_ACCESS_READ, CAKE_FDIO_SHARE_READ, CAKE_FDIO_OPEN_IF_EXISTS, CAKE_FDIO_ATTRIBUTE_NORMAL);
-            if(fdSrc == CAKE_FDIO_ERROR_OPEN) {
+            srcFd = cake_fdio_open_file(srcFiles->list[i]->bytes, CAKE_FDIO_ACCESS_READ, CAKE_FDIO_SHARE_READ, CAKE_FDIO_OPEN_IF_EXISTS, CAKE_FDIO_ATTRIBUTE_NORMAL);
+            if(srcFd == CAKE_FDIO_ERROR_OPEN) {
                 srcFiles->list[i]->bytes[0] = 3;
                 continue;
             }
-            fdO = cake_fdio_open_file(oFiles->list[i]->bytes, CAKE_FDIO_ACCESS_READ, CAKE_FDIO_SHARE_READ, CAKE_FDIO_OPEN_IF_EXISTS, CAKE_FDIO_ATTRIBUTE_NORMAL);
-            if(fdO != CAKE_FDIO_ERROR_OPEN) {
-                if(cake_fdio_compare_time(fdSrc, fdO, CAKE_FDIO_COMPARE_LAST_WRITE_TIME) != CAKE_FDIO_NEWER) {
+            oFd = cake_fdio_open_file(oFiles->list[i]->bytes, CAKE_FDIO_ACCESS_READ, CAKE_FDIO_SHARE_READ, CAKE_FDIO_OPEN_IF_EXISTS, CAKE_FDIO_ATTRIBUTE_NORMAL);
+            if(oFd != CAKE_FDIO_ERROR_OPEN) {
+                if(check_includes(srcFd, oFd, srcFiles->list[i]))
+                    goto skip_time_check;
+
+                if(cake_fdio_compare_time(srcFd, oFd, CAKE_FDIO_COMPARE_LAST_WRITE_TIME) != CAKE_FDIO_NEWER) {
                     srcFiles->list[i]->bytes[0] = 3;
-                    cake_fdio_close(fdSrc);
-                    cake_fdio_close(fdO);
+                    cake_fdio_close(srcFd);
+                    cake_fdio_close(oFd);
                     continue;
                 }
             }
-            cake_fdio_close(fdSrc);
-            cake_fdio_close(fdO);
+        skip_time_check:
+
+            cake_fdio_close(srcFd);
+            cake_fdio_close(oFd);
             g_NeedCompileNumber++;
-            // TODO: vérifier les includes
         }
 
         if(g_NeedCompileNumber > 0) {
             printf("[===== Compilation =====]\n");
             compileTimeStart = cake_get_current_time_millis();
             for(i = 0; i < srcFiles->data.length; ++i) {
+                // On ignore les fichiers qui ne doivent pas être compilés
                 if(srcFiles->list[i]->bytes[0] == 3)
                     continue;
                 tempInternalIndex = oFiles->list[i]->data.length - 1;
@@ -179,7 +184,7 @@ int main(int argc, char *argv[])
                 }else {
                     cake_process_start(process);
                     cake_exit_code retCode;
-                    cake_process_wait(&process, retCode);
+                    cake_process_wait(process, retCode);
                     if(retCode == 0)
                         g_CompileNumber++;
                 }
@@ -195,7 +200,7 @@ int main(int argc, char *argv[])
             cake_free_list_strutf8(oFiles);
     }
 
-    cake_bool linkOk;
+    uchar linkOk = 2;
 
     // Link des fichiers objets
     if(g_Mode & MODE_LINK_ENABLED) {
@@ -280,7 +285,7 @@ int main(int argc, char *argv[])
                         linkTimeStart = cake_get_current_time_millis();
                         cake_process_start(process);
                         cake_exit_code retCode;
-                        cake_process_wait(&process, retCode);
+                        cake_process_wait(process, retCode);
                         linkTimeEnd = cake_get_current_time_millis();
                         linkOk = (retCode == 0);
                     }
@@ -327,7 +332,7 @@ skip_link:
             uchar *secBuffer    = cake_ulonglong_to_char_array_dyn(t / 1000);
             uchar *millisBuffer = cake_ulonglong_to_char_array_dyn(t % 1000);
             cake_strutf8_add_char_array(coolStat, "Link: ");
-            cake_strutf8_add_char_array(coolStat, (linkOk ? "OK [" : "Erreur ["));
+            cake_strutf8_add_char_array(coolStat, (linkOk == 1 ? "OK [" : (linkOk == 2 ? "[" : "Erreur [")));
             cake_strutf8_add_char_array(coolStat, secBuffer);
             cake_strutf8_add_char_array(coolStat, ".");
             cake_strutf8_add_char_array(coolStat, millisBuffer);
@@ -339,7 +344,7 @@ skip_link:
         cake_free_strutf8(coolStat);
     }
 
-    cake_free_file_object(config);
+    cake_free_fileobject(config);
 
     #ifdef CAKE_WINDOWS
     SetConsoleOutputCP(consoleOutputCP);
