@@ -27,7 +27,7 @@ cake_bool check_args(int argc, cake_char *argv[]) {
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("link"))    == 0)
                 g_Mode &= MODE_LINK;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("clean"))   == 0)
-                g_Mode &= MODE_CLEAN_ENABLED;
+                g_Mode |= MODE_CLEAN_ENABLED;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("exec"))    == 0)
                 g_Mode = MODE_EXEC;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("lines"))   == 0)
