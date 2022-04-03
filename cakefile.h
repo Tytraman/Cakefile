@@ -16,8 +16,8 @@
 */
 cake_bool check_args(int argc, cake_char *argv[]);
 
-cake_bool list_files_callback(Cake_String_UTF8 *filename);
-cake_bool list_o_files_callback(Cake_String_UTF8 *filename);
+cake_bool list_files_callback(Cake_String_UTF8 *filename, void *args);
+cake_bool list_o_files_callback(Cake_String_UTF8 *filename, void *args);
 
 void print_missing_option(const uchar *option, const uchar *defaultValue);
 void print_required_option(const uchar *option);

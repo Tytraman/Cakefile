@@ -15,7 +15,7 @@
 
 #define MODE_ALL                 0b11100000
 #define MODE_LINK                0b10100000
-#define MODE_RESET               0b11110000
+#define MODE_REBUILD             0b11100001
 #define MODE_EXEC                0b00001000
 #define MODE_LINES_COUNT         0b00000100
 

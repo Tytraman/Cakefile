@@ -22,12 +22,12 @@ cake_bool check_args(int argc, cake_char *argv[]) {
         for(i = 1; i < argc; ++i) {
             if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("all")) == 0)
                 g_Mode = MODE_ALL;
-            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("reset"))   == 0)
-                g_Mode = MODE_RESET;
+            else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("rebuild"))   == 0)
+                g_Mode = MODE_REBUILD;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("link"))    == 0)
-                g_Mode &= MODE_LINK;
+                g_Mode = MODE_LINK;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("clean"))   == 0)
-                g_Mode |= MODE_CLEAN_ENABLED;
+                g_Mode = MODE_CLEAN_ENABLED;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("exec"))    == 0)
                 g_Mode = MODE_EXEC;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("lines"))   == 0)
@@ -99,13 +99,16 @@ cake_bool check_args(int argc, cake_char *argv[]) {
     return ret;
 }
 
-cake_bool list_files_callback(Cake_String_UTF8 *filename) {
-    if(cake_strutf8_end_with(filename, ".c"))
-        return cake_true;
+cake_bool list_files_callback(Cake_String_UTF8 *filename, void *args) {
+    Cake_List_String_UTF8 *srcExtension = (Cake_List_String_UTF8 *) args;
+    ulonglong i;
+    for(i = 0; i < srcExtension->data.length; ++i)
+        if(cake_strutf8_end_with(filename, srcExtension->list[i]->bytes))
+            return cake_true;
     return cake_false;
 }
 
-cake_bool list_o_files_callback(Cake_String_UTF8 *filename) {
+cake_bool list_o_files_callback(Cake_String_UTF8 *filename, void *args) {
     if(cake_strutf8_end_with(filename, ".o"))
         return cake_true;
     return cake_false;
