@@ -55,7 +55,7 @@ extern cake_bool g_Quiet;
 // Chemin actuel.
 extern Cake_String_UTF8 *g_CurrentDir;
 
-extern Cake_FileObjectElement *o_Language;
+extern Cake_FileObjectElement *o_ProgrammingLanguage;
 extern Cake_FileObjectElement *o_ObjDir;
 extern Cake_FileObjectElement *o_BinDir;
 extern Cake_FileObjectElement *o_Compiler;

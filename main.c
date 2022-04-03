@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
         // ./cake link
         if((g_Mode & MODE_COMPILE_ENABLED) == 0) {
             oFiles = cake_list_strutf8();
-            cake_list_files_recursive(".", oFiles, NULL, list_o_files_callback);
+            cake_list_files_recursive(o_ObjDir->value->bytes, oFiles, NULL, list_o_files_callback);
             goto go_link;
         }
 

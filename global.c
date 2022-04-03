@@ -21,7 +21,7 @@ Cake_String_UTF8 *g_CurrentDir = NULL;
 
 cake_bool g_Quiet = cake_false;
 
-Cake_FileObjectElement *o_Language = NULL;
+Cake_FileObjectElement *o_ProgrammingLanguage = NULL;
 Cake_FileObjectElement *o_ObjDir = NULL;
 Cake_FileObjectElement *o_BinDir = NULL;
 Cake_FileObjectElement *o_Compiler = NULL;
