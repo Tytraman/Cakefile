@@ -346,8 +346,7 @@ end_exec_name:
                 cake_strutf8_equals(o_AutoExec->value, "yes")  ||
                 cake_strutf8_equals(o_AutoExec->value, "enabled")
             )
-                g_AutoExec = cake_true;
-            // g_AutoExec = cake_false dans global.c
+                g_Mode |= MODE_EXEC_ENABLED;
             goto end_auto_exec;
         }
         print_missing_option(kAutoExec, o_AutoExec->value->bytes);

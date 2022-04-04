@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
         uchar temp;
         uchar *ptr;
         ulonglong tempInternalIndex;
-        if(g_Mode == MODE_REBUILD) {
+        if(g_Mode & MODE_REBUILD_ENABLED) {
             g_NeedCompileNumber = oFiles->data.length;
             goto compile;
         }
@@ -369,6 +369,44 @@ int main(int argc, char *argv[])
         cake_free_strutf8(filenameLink);
     }
 skip_link:
+
+    if(g_Mode & MODE_EXEC_ENABLED) {
+        Cake_List_String_UTF8 *execCommand = cake_list_strutf8();
+        cake_list_strutf8_add_char_array(execCommand, o_BinDir->value->bytes);
+        cake_strutf8_insert_char_array(execCommand->list[0], 0, "." FILE_SEPARATOR_CHAR_STR);
+        cake_strutf8_add_char_array(execCommand->list[0], o_ExecName->value->bytes);
+        if(o_ExecArgs != NULL && o_ExecArgs->value->length > 0) {
+            uchar *lastPtr = o_ExecArgs->value->bytes;
+            uchar *ptr = lastPtr;
+            cake_bool loop = cake_true;
+            while(loop) {
+                if(ptr == &o_ExecArgs->value->bytes[o_ExecArgs->value->data.length]) {
+                    loop = cake_false;
+                    goto options_spaced;
+                }
+                if(*ptr == ' ') {
+                    *ptr = '\0';
+                options_spaced:
+                    cake_list_strutf8_add_char_array(execCommand, lastPtr);
+                    lastPtr = ptr + 1;
+                }
+                ptr++;
+            }
+        }
+        if(!g_Quiet) {
+            printf("[===== Exécution =====]\n");
+            ulonglong y;
+            for(y = 0; y < execCommand->data.length; ++y)
+                printf("%s ", execCommand->list[y]->bytes);
+            printf("\n");
+        }
+        Cake_Process process;
+        cake_create_process(execCommand, &process, NULL, NULL, NULL);
+        cake_process_start(process);
+        cake_exit_code retCode;
+        cake_process_wait(process, retCode);
+        cake_free_list_strutf8(execCommand);
+    }
 
     if(g_Mode & MODE_STATS_ENABLED && !g_Quiet) {
         Cake_String_UTF8 *coolStat = cake_strutf8("[===== Stats =====]\n");

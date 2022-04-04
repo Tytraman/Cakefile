@@ -10,7 +10,6 @@ const uchar *STDIN  = "STDIN";
 
 cake_byte g_ModeLanguage = 0;
 
-cake_bool g_AutoExec = cake_false;
 cake_byte g_Mode = MODE_ALL;
 
 ulonglong g_NeedCompileNumber = 0;
@@ -33,5 +32,3 @@ Cake_FileObjectElement *o_LinkLibs = NULL;
 Cake_FileObjectElement *o_ExecName = NULL;
 Cake_FileObjectElement *o_AutoExec = NULL;
 Cake_FileObjectElement *o_ExecArgs = NULL;
-
-

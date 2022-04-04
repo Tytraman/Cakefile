@@ -10,16 +10,15 @@
 #define MODE_COMPILE_ENABLED     0b01000000
 #define MODE_LINK_ENABLED        0b00100000
 #define MODE_CLEAN_ENABLED       0b00010000
-
-// TODO: faire ces 2 modes :
-#define MODE_EXEC_ENABLED        0b00001000
-#define MODE_LINES_COUNT_ENABLED 0b00000100
+#define MODE_REBUILD_ENABLED     0b00001000
+#define MODE_EXEC_ENABLED        0b00000100
+#define MODE_LINES_COUNT_ENABLED 0b00000010
 
 #define MODE_ALL                 0b11100000
 #define MODE_LINK                0b10100000
-#define MODE_REBUILD             0b11100001
-#define MODE_EXEC                0b00001000
-#define MODE_LINES_COUNT         0b00000100
+#define MODE_REBUILD             0b11101000
+#define MODE_EXEC                0b00000100
+#define MODE_LINES_COUNT         0b00000010
 
 #define C_LANGUAGE   1
 #define CPP_LANGUAGE 2
@@ -44,8 +43,6 @@ extern const uchar *STDIN;
 */
 extern cake_byte g_ModeLanguage;
 
-// Détermine si le programme s'exécute automatiquement après la compilation.
-extern cake_bool g_AutoExec;
 extern cake_byte g_Mode;
 
 extern ulonglong g_NeedCompileNumber;
