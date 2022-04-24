@@ -1,12 +1,12 @@
 #include "global.h"
 
-const uchar *VERSION =  "2.3.0";
-const uchar *PROGRAM_NAME =  "Cakefile";
-const uchar *OPTIONS_FILENAME = "Cakefile";
+cchar_ptr VERSION          = "2.3.0";
+cchar_ptr PROGRAM_NAME     = "Cakefile";
+cchar_ptr OPTIONS_FILENAME = "Cakefile";
 
-const uchar *STDERR = "STDERR";
-const uchar *STDOUT = "STDOUT";
-const uchar *STDIN  = "STDIN";
+cchar_ptr STDERR = "STDERR";
+cchar_ptr STDOUT = "STDOUT";
+cchar_ptr STDIN  = "STDIN";
 
 cake_byte g_ModeLanguage = 0;
 

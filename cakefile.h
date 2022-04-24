@@ -1,10 +1,10 @@
 #ifndef __CAKEFILE_H__
 #define __CAKEFILE_H__
 
-#include "include/libcake/def.h"
-#include "include/libcake/strutf8.h"
-#include "include/libcake/fileobject.h"
-#include "include/libcake/fdio.h"
+#include <libcake/def.h>
+#include <libcake/strutf8.h>
+#include <libcake/fileobject.h>
+#include <libcake/fdio.h>
 
 
 /*
@@ -19,8 +19,8 @@ cake_bool check_args(int argc, cake_char *argv[]);
 cake_bool list_files_callback(Cake_String_UTF8 *filename, void *args);
 cake_bool list_o_files_callback(Cake_String_UTF8 *filename, void *args);
 
-void print_missing_option(const uchar *option, const uchar *defaultValue);
-void print_required_option(const uchar *option);
+void print_missing_option(const char *option, const char *defaultValue);
+void print_required_option(const char *option);
 
 cake_bool get_fileobject_elements(Cake_FileObject *config);
 

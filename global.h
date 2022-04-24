@@ -1,9 +1,9 @@
 #ifndef __CAKEFILE_GLOBAL_H__
 #define __CAKEFILE_GLOBAL_H__
 
-#include "include/libcake/def.h"
-#include "include/libcake/strutf8.h"
-#include "include/libcake/fileobject.h"
+#include <libcake/def.h>
+#include <libcake/strutf8.h>
+#include <libcake/fileobject.h>
 
 // Si le bit est à 1, c'est que le mode est activé.
 #define MODE_STATS_ENABLED       0b10000000
@@ -17,22 +17,22 @@
 #define MODE_ALL                 0b11100000
 #define MODE_LINK                0b10100000
 #define MODE_REBUILD             0b11101000
-#define MODE_EXEC                0b00000100
+#define MODE_EXEC                0b10000100
 #define MODE_LINES_COUNT         0b00000010
 
 #define C_LANGUAGE   1
 #define CPP_LANGUAGE 2
 
 // Numéro de version du programme.
-extern const uchar *VERSION;
+extern cchar_ptr VERSION;
 // Nom du programme.
-extern const uchar *PROGRAM_NAME;
+extern cchar_ptr PROGRAM_NAME;
 // Nom du fichier de configuration (Cakefile).
-extern const uchar *OPTIONS_FILENAME;
+extern cchar_ptr OPTIONS_FILENAME;
 
-extern const uchar *STDERR;
-extern const uchar *STDOUT;
-extern const uchar *STDIN;
+extern cchar_ptr STDERR;
+extern cchar_ptr STDOUT;
+extern cchar_ptr STDIN;
 
 /*
         Langage de programmation à compiler.

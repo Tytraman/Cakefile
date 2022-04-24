@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "include/libcake/file.h"
-#include "include/libcake/fdio.h"
+#include <libcake/file.h>
+#include <libcake/fdio.h>
 
 #include "global.h"
 
@@ -79,8 +79,7 @@ cake_bool check_args(int argc, cake_char *argv[]) {
                             "exec_args :\n";
                         cake_fd fd = cake_fdio_open_file(OPTIONS_FILENAME, CAKE_FDIO_ACCESS_WRITE, 0, CAKE_FDIO_OPEN_CREATE_ALWAYS, CAKE_FDIO_ATTRIBUTE_NORMAL);
                         if(fd != CAKE_FDIO_ERROR_OPEN) {
-                            cake_size bytes;
-                            cake_fdio_write(fd, sizeof(defaultCakefile) - 1, bytes, defaultCakefile);
+                            cake_fdio_write_no_ret(fd, sizeof(defaultCakefile) - 1, defaultCakefile);
                             cake_fdio_close(fd);
                         }
                     }else
@@ -103,7 +102,7 @@ cake_bool list_files_callback(Cake_String_UTF8 *filename, void *args) {
     Cake_List_String_UTF8 *srcExtension = (Cake_List_String_UTF8 *) args;
     ulonglong i;
     for(i = 0; i < srcExtension->data.length; ++i)
-        if(cake_strutf8_end_with(filename, srcExtension->list[i]->bytes))
+        if(cake_strutf8_end_with(filename, (cchar_ptr) srcExtension->list[i]->bytes))
             return cake_true;
     return cake_false;
 }
@@ -114,11 +113,11 @@ cake_bool list_o_files_callback(Cake_String_UTF8 *filename, void *args) {
     return cake_false;
 }
 
-void print_missing_option(const uchar *option, const uchar *defaultValue) {
+void print_missing_option(const char *option, const char *defaultValue) {
     printf("Option `%s` manquante, valeur par défaut chargée: %s\n", option, defaultValue);    
 }
 
-void print_required_option(const uchar *option) {
+void print_required_option(const char *option) {
     fprintf(stderr, "Option obligatoire manquante: `%s`\n", option);
 }
 
@@ -132,8 +131,8 @@ cake_bool get_fileobject_elements(Cake_FileObject *config) {
             "programming_language"
     );
     if(o_ProgrammingLanguage == NULL || o_ProgrammingLanguage->value->length == 0) {
-        const uchar *kLanguage = "programming_language";
-        const uchar *dLanguage = "c";
+        cchar_ptr kLanguage = "programming_language";
+        cchar_ptr dLanguage = "c";
         o_ProgrammingLanguage = cake_fileobject_get_element(config, kLanguage);
         if(o_ProgrammingLanguage == NULL)
             o_ProgrammingLanguage = cake_list_fileobject_element_add(&config->elements, kLanguage, dLanguage);
@@ -141,7 +140,7 @@ cake_bool get_fileobject_elements(Cake_FileObject *config) {
             cake_char_array_to_strutf8(dLanguage, o_ProgrammingLanguage->value);
         else
             goto end_programming_language;
-        print_missing_option(kLanguage, o_ProgrammingLanguage->value->bytes);
+        print_missing_option(kLanguage, (cchar_ptr) o_ProgrammingLanguage->value->bytes);
     }
 end_programming_language:
     if(
@@ -170,8 +169,8 @@ end_programming_language:
             "obj_dir"
     );
     if(o_ObjDir == NULL || o_ObjDir->value->length == 0) {
-        const uchar *kObjDir = "obj_dir";
-        const uchar *dObjDir = "obj";
+        cchar_ptr kObjDir = "obj_dir";
+        cchar_ptr dObjDir = "obj";
         o_ObjDir = cake_fileobject_get_element(config, kObjDir);
         if(o_ObjDir == NULL)
             o_ObjDir = cake_list_fileobject_element_add(&config->elements, kObjDir, dObjDir);
@@ -179,7 +178,7 @@ end_programming_language:
             cake_char_array_to_strutf8(dObjDir, o_ObjDir->value);
         else
             goto end_obj_dir;
-        print_missing_option(kObjDir, o_ObjDir->value->bytes);
+        print_missing_option(kObjDir, (cchar_ptr) o_ObjDir->value->bytes);
     }
 end_obj_dir:
     cake_strutf8_add_char_array(o_ObjDir->value,
@@ -201,8 +200,8 @@ end_obj_dir:
             "bin_dir"
     );
     if(o_BinDir == NULL || o_BinDir->value->length == 0) {
-        const uchar *kBinDir = "bin_dir";
-        const uchar *dBinDir = "bin";
+        cchar_ptr kBinDir = "bin_dir";
+        cchar_ptr dBinDir = "bin";
         o_BinDir = cake_fileobject_get_element(config, kBinDir);
         if(o_BinDir == NULL)
             o_BinDir = cake_list_fileobject_element_add(&config->elements, kBinDir, dBinDir);
@@ -210,7 +209,7 @@ end_obj_dir:
             cake_char_array_to_strutf8(dBinDir, o_BinDir->value);
         else
             goto end_bin_dir;
-        print_missing_option(kBinDir, o_BinDir->value->bytes);
+        print_missing_option(kBinDir, (cchar_ptr) o_BinDir->value->bytes);
     }
 end_bin_dir:
     cake_strutf8_add_char_array(o_BinDir->value, FILE_SEPARATOR_CHAR_STR);     // bin/
@@ -225,7 +224,7 @@ end_bin_dir:
             "compiler"
     );
     if(o_Compiler == NULL || o_Compiler->value->length == 0) {
-        const uchar *kCompiler = "compiler";
+        cchar_ptr kCompiler = "compiler";
         o_Compiler = cake_fileobject_get_element(config, kCompiler);
         if(o_Compiler == NULL || o_Compiler->value->length == 0) {
             print_required_option(kCompiler);
@@ -242,8 +241,8 @@ end_bin_dir:
             "exec_name"
     );
     if(o_ExecName == NULL || o_ExecName->value->length == 0) {
-        const uchar *kExecName = "exec_name";
-        const uchar *dExecName =
+        cchar_ptr kExecName = "exec_name";
+        cchar_ptr dExecName =
                 #ifdef CAKE_WINDOWS
                 "prog.exe";
                 #else
@@ -256,7 +255,7 @@ end_bin_dir:
             cake_char_array_to_strutf8(dExecName, o_ExecName->value);
         else
             goto end_exec_name;
-        print_missing_option(kExecName, o_ExecName->value->bytes);
+        print_missing_option(kExecName, (cchar_ptr) o_ExecName->value->bytes);
     }
 end_exec_name:
 
@@ -271,7 +270,6 @@ end_exec_name:
 
     if(cont == NULL)
         cont = cake_fileobject_get_container(config, "includes");
-        
 
     if(cont != NULL)
         o_Includes = cont->strList;
@@ -332,8 +330,8 @@ end_exec_name:
         "auto_exec"
     );
     if(o_AutoExec == NULL || o_AutoExec->value->length == 0) {
-        const uchar *kAutoExec = "auto_exec";
-        const uchar *dAutoExec = "false";
+        cchar_ptr kAutoExec = "auto_exec";
+        cchar_ptr dAutoExec = "false";
         o_AutoExec = cake_fileobject_get_element(config, kAutoExec);
         if(o_AutoExec == NULL)
             o_AutoExec = cake_list_fileobject_element_add(&config->elements, kAutoExec, dAutoExec);
@@ -349,7 +347,7 @@ end_exec_name:
                 g_Mode |= MODE_EXEC_ENABLED;
             goto end_auto_exec;
         }
-        print_missing_option(kAutoExec, o_AutoExec->value->bytes);
+        print_missing_option(kAutoExec, (cchar_ptr) o_AutoExec->value->bytes);
     }
 end_auto_exec:
 
@@ -400,9 +398,9 @@ cake_bool check_includes(cake_fd srcFd, cake_fd oFd, Cake_String_UTF8 *srcFile) 
                         uchar *slashPtr = cake_strutf8_search_from_end(filename, FILE_SEPARATOR_CHAR_STR, &slashInternalIndex);
                         if(slashPtr != NULL)
                             cake_strutf8_remove_from_to_internal(filename, slashInternalIndex + 2, filename->data.length);
-                        cake_strutf8_add_char_array(filename, lastPtr);
+                        cake_strutf8_add_char_array(filename, (cchar_ptr) lastPtr);
 
-                        cake_fd hFd = cake_fdio_open_file(filename->bytes, CAKE_FDIO_ACCESS_READ, CAKE_FDIO_SHARE_READ, CAKE_FDIO_OPEN_IF_EXISTS, CAKE_FDIO_ATTRIBUTE_NORMAL);
+                        cake_fd hFd = cake_fdio_open_file((cchar_ptr) filename->bytes, CAKE_FDIO_ACCESS_READ, CAKE_FDIO_SHARE_READ, CAKE_FDIO_OPEN_IF_EXISTS, CAKE_FDIO_ATTRIBUTE_NORMAL);
                         cake_free_strutf8(filename);
                         if(hFd != CAKE_FDIO_ERROR_OPEN) {
                             // Si le fichier inclu a été modifié plus récemment que le fichier compilé, alors on recompile
