@@ -38,6 +38,8 @@ Liste des options :
 - `obj_dir` : dossier dans lequel seront stockés les fichiers objets.
 - `compiler` : compilateur utilisé.
 - `exec_name` : nom du fichier destination.
+- `compile_options` : options à passer lors de la compilation.
+- `link_options` : options à passer lors du link.
 - `includes` : liste des dossiers à inclure lors de la compilation.
 - `libs` : liste des dossiers contenant les librairies à inclure lors de la compilation.
 - `link_libs` : librairies à ajouter lors du link, exemple : `-lcake -lWs2_32 -lssl -lcrypto`.
