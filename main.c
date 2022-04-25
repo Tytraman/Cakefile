@@ -175,6 +175,7 @@ int main(int argc, char *argv[])
             cake_strutf8_add_char_array(oFiles->list[i], ".o");
         skip_obj: ;
         }
+        cake_free_list_strutf8(srcExtensions);
 
         uchar temp;
         uchar *ptr;
@@ -262,12 +263,11 @@ int main(int argc, char *argv[])
         cake_free_list_strutf8(compileCommand);
 
         cake_free_list_strutf8(srcFiles);
-        if(!(g_Mode & MODE_LINK_ENABLED))
+        if((g_Mode & MODE_LINK_ENABLED) == 0)
             cake_free_list_strutf8(oFiles);
     }
 
     uchar linkOk = 2;
-
     // Link des fichiers objets
     if(g_Mode & MODE_LINK_ENABLED) {
         // ./cake link
@@ -420,12 +420,13 @@ int main(int argc, char *argv[])
             }
             cake_delete_file((cchar_ptr) filenameLink->bytes);
             cake_free_list_strutf8(linkCommand);
-            cake_free_list_strutf8(oFiles);
         }
+        cake_free_list_strutf8(oFiles);
         cake_free_strutf8(filenameLink);
     }
 skip_link:
 
+    cake_exit_code retCode;
     ulonglong execStartTime = 0;
     ulonglong execEndTime   = 0;
     if(g_Mode & MODE_EXEC_ENABLED) {
@@ -463,7 +464,6 @@ skip_link:
         execStartTime = cake_get_current_time_millis();
         cake_create_process(execCommand, &process, NULL, NULL, NULL);
         cake_process_start(process);
-        cake_exit_code retCode;
         cake_process_wait(process, retCode);
         execEndTime = cake_get_current_time_millis();
         cake_free_list_strutf8(execCommand);
@@ -508,11 +508,20 @@ skip_link:
             ulonglong t = execEndTime - execStartTime;
             char *secBuffer    = cake_ulonglong_to_char_array_dyn(t / 1000);
             char *millisBuffer = cake_ulonglong_to_char_array_dyn(t % 1000);
-            cake_strutf8_add_char_array(coolStat, "Temps d'exécution: " CONSOLE_FG_YELLOW CONSOLE_BOLD);
+            #ifdef CAKE_UNIX
+            char retBuffer[4];
+            snprintf(retBuffer, sizeof(retBuffer), "%u", retCode);
+            #else
+            char retBuffer[11];
+            snprintf(retBuffer, sizeof(retBuffer), "%u", retCode);
+            #endif
+            cake_strutf8_add_char_array(coolStat, "Code de retour: ");
+            cake_strutf8_add_char_array(coolStat, retBuffer);
+            cake_strutf8_add_char_array(coolStat, "\nTemps d'exécution: " CONSOLE_FG_YELLOW CONSOLE_BOLD);
             cake_strutf8_add_char_array(coolStat, secBuffer);
             cake_strutf8_add_char_array(coolStat, ".");
             cake_strutf8_add_char_array(coolStat, millisBuffer);
-            cake_strutf8_add_char_array(coolStat, "s\n");
+            cake_strutf8_add_char_array(coolStat, "s" CONSOLE_RESET "\n");
             free(secBuffer);
             free(millisBuffer);
         }
@@ -522,6 +531,7 @@ skip_link:
     
 end:
     cake_free_fileobject(config);
+    //printf("Au revoir !\n");
 
     #ifdef CAKE_WINDOWS
     SetConsoleOutputCP(consoleOutputCP);
