@@ -26,4 +26,10 @@ cake_bool get_fileobject_elements(Cake_FileObject *config);
 
 cake_bool check_includes(cake_fd srcFd, cake_fd oFd, Cake_String_UTF8 *srcFile);
 
+Cake_List_String_UTF8 *command_format(Cake_String_UTF8 *from);
+
+void command_index(Cake_UlonglongArray *dest, Cake_List_String_UTF8 *command, const char *value);
+void command_replace_index(Cake_List_String_UTF8 *command, Cake_UlonglongArray *indexArray, Cake_List_String_UTF8 *replacement, ulonglong replacementIndex);
+void command_replace_list(Cake_List_String_UTF8 *command, Cake_List_String_UTF8 *list, const char *value);
+
 #endif

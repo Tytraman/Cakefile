@@ -58,6 +58,7 @@ extern Cake_FileObjectElement *o_ProgrammingLanguage;
 extern Cake_FileObjectElement *o_ObjDir;
 extern Cake_FileObjectElement *o_BinDir;
 extern Cake_FileObjectElement *o_Compiler;
+extern Cake_FileObjectElement *o_Linker;
 extern Cake_FileObjectElement *o_ExecName;
 extern Cake_List_String_UTF8  *o_Includes;
 extern Cake_List_String_UTF8  *o_Libs;
@@ -66,5 +67,8 @@ extern Cake_FileObjectElement *o_LinkOptions;
 extern Cake_FileObjectElement *o_LinkLibs;
 extern Cake_FileObjectElement *o_AutoExec;
 extern Cake_FileObjectElement *o_ExecArgs;
+
+extern Cake_FileObjectElement *o_CompileCommandFormat;
+extern Cake_FileObjectElement *o_LinkCommandFormat;
 
 #endif

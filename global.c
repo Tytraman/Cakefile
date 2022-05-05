@@ -23,6 +23,7 @@ cake_bool g_Quiet = cake_false;
 Cake_FileObjectElement *o_ProgrammingLanguage = NULL;
 Cake_FileObjectElement *o_ObjDir = NULL;
 Cake_FileObjectElement *o_BinDir = NULL;
+Cake_FileObjectElement *o_Linker = NULL;
 Cake_FileObjectElement *o_Compiler = NULL;
 Cake_List_String_UTF8  *o_Includes = NULL;
 Cake_List_String_UTF8  *o_Libs = NULL;
@@ -32,3 +33,6 @@ Cake_FileObjectElement *o_LinkLibs = NULL;
 Cake_FileObjectElement *o_ExecName = NULL;
 Cake_FileObjectElement *o_AutoExec = NULL;
 Cake_FileObjectElement *o_ExecArgs = NULL;
+
+Cake_FileObjectElement *o_CompileCommandFormat = NULL;
+Cake_FileObjectElement *o_LinkCommandFormat = NULL;

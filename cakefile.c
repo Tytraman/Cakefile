@@ -8,8 +8,8 @@
 
 #include "global.h"
 
-#define WINDOWS_KEY "windows."
-#define LINUX_KEY   "linux."
+#define WINDOWS_KEY "windows"
+#define LINUX_KEY   "linux"
 
 cake_bool check_args(int argc, cake_char *argv[]) {
     cake_bool ret = cake_true;
@@ -53,30 +53,33 @@ cake_bool check_args(int argc, cake_char *argv[]) {
                     printf("%s x%s version %s\nCompilé le " __DATE__ " à " __TIME__ "\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
                     ret = cake_false;
                 }
-            }else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("--generate")) == 0) {
+            }else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("generate")) == 0) {
                 if(generate) {
                     generate = cake_false;
                     if(!cake_file_exists(OPTIONS_FILENAME)) {
-                        uchar defaultCakefile[] =
-                            "language : c\n\n"
+                        char defaultCakefile[] =
+                            "programming_language : c\n\n"
+                            "compiler : gcc\n"
+                            "linker : gcc\n"
                             "obj_dir : obj\n"
                             "bin_dir : bin\n\n"
+
+                            "compile_command_format : {compiler} -c {src_file} -o {obj_file} {includes} {compile_options}\n"
+                            "link_command_format : {linker} {list_obj_files} -o {exec_name} {link_libs} {link_options}\n\n"
 
                             #ifdef CAKE_WINDOWS
                             "exec_name : prog.exe\n\n"
                             #else
                             "exec_name : prog\n\n"
                             #endif
-
-                            "includes : \n"
-                            "libs : \n\n"
-
                             "compile_options : \n"
-                            "link_options : \n\n"
-
+                            "link_options : \n"
                             "link_libs : \n\n"
+
                             "auto_exec : false\n"
-                            "exec_args :\n";
+                            "exec_args :\n"
+                            "includes {\n\n}\n\n"
+                            "libs {\n\n}\n";
                         cake_fd fd = cake_fdio_open_file(OPTIONS_FILENAME, CAKE_FDIO_ACCESS_WRITE, 0, CAKE_FDIO_OPEN_CREATE_ALWAYS, CAKE_FDIO_ATTRIBUTE_NORMAL);
                         if(fd != CAKE_FDIO_ERROR_OPEN) {
                             cake_fdio_write_no_ret(fd, sizeof(defaultCakefile) - 1, defaultCakefile);
@@ -89,7 +92,13 @@ cake_bool check_args(int argc, cake_char *argv[]) {
             }else {
                 if(invalid) {
                     invalid = cake_false;
-                    fprintf(stderr, "Argument invalide, entre `cake --help` pour afficher l'aide.\n");
+                    fprintf(stderr, "Argument invalide, entrez `"
+                    #ifdef CAKE_WINDOWS
+                    "%S"
+                    #else
+                    "%s"
+                    #endif
+                    " --help` pour afficher l'aide.\n", argv[0]);
                     ret = cake_false;
                 }
             }
@@ -122,25 +131,26 @@ void print_required_option(const char *option) {
 }
 
 cake_bool get_fileobject_elements(Cake_FileObject *config) {
-    o_ProgrammingLanguage = cake_fileobject_get_element(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "programming_language"
+    Cake_FileObjectContainer *sysCont = cake_fileobject_get_container(config,
+        #ifdef CAKE_WINDOWS
+        WINDOWS_KEY
+        #else
+        LINUX_KEY
+        #endif
     );
+    
+    cchar_ptr programmingLanguageKey = "programming_language";
+    o_ProgrammingLanguage = cake_fileobject_get_element_from(sysCont, programmingLanguageKey);
     if(o_ProgrammingLanguage == NULL || o_ProgrammingLanguage->value->length == 0) {
-        cchar_ptr kLanguage = "programming_language";
         cchar_ptr dLanguage = "c";
-        o_ProgrammingLanguage = cake_fileobject_get_element(config, kLanguage);
+        o_ProgrammingLanguage = cake_fileobject_get_element(config, programmingLanguageKey);
         if(o_ProgrammingLanguage == NULL)
-            o_ProgrammingLanguage = cake_list_fileobject_element_add(&config->elements, kLanguage, dLanguage);
+            o_ProgrammingLanguage = cake_list_fileobject_element_add(&config->elements, programmingLanguageKey, dLanguage);
         else if(o_ProgrammingLanguage->value->length == 0)
             cake_char_array_to_strutf8(dLanguage, o_ProgrammingLanguage->value);
         else
             goto end_programming_language;
-        print_missing_option(kLanguage, (cchar_ptr) o_ProgrammingLanguage->value->bytes);
+        print_missing_option(programmingLanguageKey, (cchar_ptr) o_ProgrammingLanguage->value->bytes);
     }
 end_programming_language:
     if(
@@ -160,25 +170,18 @@ end_programming_language:
         return cake_false;
     }
 
-    o_ObjDir = cake_fileobject_get_element(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "obj_dir"
-    );
+    cchar_ptr objDirKey = "obj_dir";
+    o_ObjDir = cake_fileobject_get_element_from(sysCont, objDirKey);
     if(o_ObjDir == NULL || o_ObjDir->value->length == 0) {
-        cchar_ptr kObjDir = "obj_dir";
         cchar_ptr dObjDir = "obj";
-        o_ObjDir = cake_fileobject_get_element(config, kObjDir);
+        o_ObjDir = cake_fileobject_get_element(config, objDirKey);
         if(o_ObjDir == NULL)
-            o_ObjDir = cake_list_fileobject_element_add(&config->elements, kObjDir, dObjDir);
+            o_ObjDir = cake_list_fileobject_element_add(&config->elements, objDirKey, dObjDir);
         else if(o_ObjDir->value->length == 0)
             cake_char_array_to_strutf8(dObjDir, o_ObjDir->value);
         else
             goto end_obj_dir;
-        print_missing_option(kObjDir, (cchar_ptr) o_ObjDir->value->bytes);
+        print_missing_option(objDirKey, (cchar_ptr) o_ObjDir->value->bytes);
     }
 end_obj_dir:
     cake_strutf8_add_char_array(o_ObjDir->value,
@@ -191,150 +194,98 @@ end_obj_dir:
             FILE_SEPARATOR_CHAR_STR
     );
 
-    o_BinDir = cake_fileobject_get_element(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "bin_dir"
-    );
+    cchar_ptr binDirKey = "bin_dir";
+    o_BinDir = cake_fileobject_get_element_from(sysCont, binDirKey);
     if(o_BinDir == NULL || o_BinDir->value->length == 0) {
-        cchar_ptr kBinDir = "bin_dir";
         cchar_ptr dBinDir = "bin";
-        o_BinDir = cake_fileobject_get_element(config, kBinDir);
+        o_BinDir = cake_fileobject_get_element(config, binDirKey);
         if(o_BinDir == NULL)
-            o_BinDir = cake_list_fileobject_element_add(&config->elements, kBinDir, dBinDir);
+            o_BinDir = cake_list_fileobject_element_add(&config->elements, binDirKey, dBinDir);
         else if(o_BinDir->value->length == 0)
             cake_char_array_to_strutf8(dBinDir, o_BinDir->value);
         else
             goto end_bin_dir;
-        print_missing_option(kBinDir, (cchar_ptr) o_BinDir->value->bytes);
+        print_missing_option(binDirKey, (cchar_ptr) o_BinDir->value->bytes);
     }
 end_bin_dir:
     cake_strutf8_add_char_array(o_BinDir->value, FILE_SEPARATOR_CHAR_STR);     // bin/
 
-    // L'option de compilateur est obligatoire
-    o_Compiler = cake_fileobject_get_element(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "compiler"
-    );
+    cchar_ptr compilerKey = "compiler";
+    o_Compiler = cake_fileobject_get_element_from(sysCont, compilerKey);
     if(o_Compiler == NULL || o_Compiler->value->length == 0) {
-        cchar_ptr kCompiler = "compiler";
-        o_Compiler = cake_fileobject_get_element(config, kCompiler);
+        o_Compiler = cake_fileobject_get_element(config, compilerKey);
         if(o_Compiler == NULL || o_Compiler->value->length == 0) {
-            print_required_option(kCompiler);
+            print_required_option(compilerKey);
             return cake_false;
         }
     }
 
-    o_ExecName = cake_fileobject_get_element(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "exec_name"
-    );
+    cchar_ptr linkerKey = "linker";
+    o_Linker = cake_fileobject_get_element_from(sysCont, linkerKey);
+    if(o_Linker == NULL || o_Linker->value->length == 0) {
+        o_Linker = cake_fileobject_get_element(config, linkerKey);
+        if(o_Linker == NULL || o_Linker->value->length == 0) {
+            print_required_option(linkerKey);
+            return cake_false;
+        }
+    }
+
+    cchar_ptr execNameKey = "exec_name";
+    o_ExecName = cake_fileobject_get_element_from(sysCont, execNameKey);
     if(o_ExecName == NULL || o_ExecName->value->length == 0) {
-        cchar_ptr kExecName = "exec_name";
         cchar_ptr dExecName =
                 #ifdef CAKE_WINDOWS
                 "prog.exe";
                 #else
                 "prog";
                 #endif
-        o_ExecName = cake_fileobject_get_element(config, kExecName);
+        o_ExecName = cake_fileobject_get_element(config, execNameKey);
         if(o_ExecName == NULL)
-            o_ExecName = cake_list_fileobject_element_add(&config->elements, kExecName, dExecName);
+            o_ExecName = cake_list_fileobject_element_add(&config->elements, execNameKey, dExecName);
         else if(o_ExecName->value->length == 0)
             cake_char_array_to_strutf8(dExecName, o_ExecName->value);
         else
             goto end_exec_name;
-        print_missing_option(kExecName, (cchar_ptr) o_ExecName->value->bytes);
+        print_missing_option(execNameKey, (cchar_ptr) o_ExecName->value->bytes);
     }
 end_exec_name:
 
-    Cake_FileObjectContainer *cont = cake_fileobject_get_container(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "includes"
-    );
-
+    cchar_ptr includesKey = "includes";
+    Cake_FileObjectContainer *cont = cake_fileobject_get_container_from(sysCont, includesKey);
     if(cont == NULL)
-        cont = cake_fileobject_get_container(config, "includes");
-
+        cont = cake_fileobject_get_container(config, includesKey);
     if(cont != NULL)
         o_Includes = cont->strList;
     
-    cont = cake_fileobject_get_container(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "libs"
-    );
+    cchar_ptr libsKey = "libs";
+    cont = cake_fileobject_get_container_from(sysCont, libsKey);
     if(cont == NULL)
-        cont = cake_fileobject_get_container(config, "libs");
-
+        cont = cake_fileobject_get_container(config, libsKey);
     if(cont != NULL)
         o_Libs = cont->strList;
 
-    o_CompileOptions = cake_fileobject_get_element(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "compile_options"
-    );
+    cchar_ptr compileOptionsKey = "compile_options";
+    o_CompileOptions = cake_fileobject_get_element_from(sysCont, compileOptionsKey);
     if(o_CompileOptions == NULL || o_CompileOptions->value->length == 0)
-        o_CompileOptions = cake_fileobject_get_element(config, "compile_options");
+        o_CompileOptions = cake_fileobject_get_element(config, compileOptionsKey);
 
-    o_LinkOptions = cake_fileobject_get_element(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "link_options"
-    );
+    cchar_ptr linkOptionsKey = "link_options";
+    o_LinkOptions = cake_fileobject_get_element_from(sysCont, linkOptionsKey);
     if(o_LinkOptions == NULL || o_LinkOptions->value->length == 0)
-        o_LinkOptions = cake_fileobject_get_element(config, "link_options");
+        o_LinkOptions = cake_fileobject_get_element(config, linkOptionsKey);
 
-    o_LinkLibs = cake_fileobject_get_element(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "link_libs"
-    );
+    cchar_ptr linkLibsKey = "link_libs";
+    o_LinkLibs = cake_fileobject_get_element_from(sysCont, linkLibsKey);
     if(o_LinkLibs == NULL || o_LinkLibs->value->length == 0)
-        o_LinkLibs = cake_fileobject_get_element(config, "link_libs");
+        o_LinkLibs = cake_fileobject_get_element(config, linkLibsKey);
 
-    o_AutoExec = cake_fileobject_get_element(config,
-        #ifdef CAKE_WINDOWS
-        WINDOWS_KEY
-        #else
-        LINUX_KEY
-        #endif
-        "auto_exec"
-    );
+    cchar_ptr autoExecKey = "auto_exec";
+    o_AutoExec = cake_fileobject_get_element_from(sysCont, autoExecKey);
     if(o_AutoExec == NULL || o_AutoExec->value->length == 0) {
-        cchar_ptr kAutoExec = "auto_exec";
         cchar_ptr dAutoExec = "false";
-        o_AutoExec = cake_fileobject_get_element(config, kAutoExec);
+        o_AutoExec = cake_fileobject_get_element(config, autoExecKey);
         if(o_AutoExec == NULL)
-            o_AutoExec = cake_list_fileobject_element_add(&config->elements, kAutoExec, dAutoExec);
+            o_AutoExec = cake_list_fileobject_element_add(&config->elements, autoExecKey, dAutoExec);
         else if(o_AutoExec->value->length == 0) {
             cake_char_array_to_strutf8(dAutoExec, o_AutoExec->value);
         }else {
@@ -347,20 +298,34 @@ end_exec_name:
                 g_Mode |= MODE_EXEC_ENABLED;
             goto end_auto_exec;
         }
-        print_missing_option(kAutoExec, (cchar_ptr) o_AutoExec->value->bytes);
+        print_missing_option(autoExecKey, (cchar_ptr) o_AutoExec->value->bytes);
     }
 end_auto_exec:
 
-    o_ExecArgs = cake_fileobject_get_element(config,
-            #ifdef CAKE_WINDOWS
-            WINDOWS_KEY
-            #else
-            LINUX_KEY
-            #endif
-            "exec_args"
-    );
+    cchar_ptr execArgsKey = "exec_args";
+    o_ExecArgs = cake_fileobject_get_element_from(sysCont, execArgsKey);
     if(o_ExecArgs == NULL || o_ExecArgs->value->length == 0)
-        o_ExecArgs = cake_fileobject_get_element(config, "exec_args");
+        o_ExecArgs = cake_fileobject_get_element(config, execArgsKey);
+
+    cchar_ptr compileCommandFormatKey = "compile_command_format";
+    o_CompileCommandFormat = cake_fileobject_get_element_from(sysCont, compileCommandFormatKey);
+    if(o_CompileCommandFormat == NULL || o_CompileCommandFormat->value->length == 0) {
+        o_CompileCommandFormat = cake_fileobject_get_element(config, compileCommandFormatKey);
+        if(o_CompileCommandFormat == NULL || o_CompileCommandFormat->value->length == 0) {
+            print_required_option(compileCommandFormatKey);
+            return cake_false;
+        }
+    }
+
+    cchar_ptr linkCommandFormatKey = "link_command_format";
+    o_LinkCommandFormat = cake_fileobject_get_element_from(sysCont, linkCommandFormatKey);
+    if(o_LinkCommandFormat == NULL || o_LinkCommandFormat->value->length == 0) {
+        o_LinkCommandFormat = cake_fileobject_get_element(config, linkCommandFormatKey);
+        if(o_LinkCommandFormat == NULL || o_LinkCommandFormat->value->length == 0) {
+            print_required_option(linkCommandFormatKey);
+            return cake_false;
+        }
+    }
     return cake_true;
 }
 
@@ -428,4 +393,143 @@ cake_bool check_includes(cake_fd srcFd, cake_fd oFd, Cake_String_UTF8 *srcFile) 
     }
     cake_free_strutf8(src);
     return cake_false;
+}
+
+Cake_List_String_UTF8 *command_format(Cake_String_UTF8 *from) {
+    Cake_List_String_UTF8 *format = cake_strutf8_split(from, " ");
+    Cake_List_String_UTF8 *command = cake_list_strutf8();
+
+    ulonglong i, j;
+    for(i = 0; i < format->data.length; ++i) {
+        if(cake_strutf8_equals(format->list[i], "{compiler}")) {
+            cake_list_strutf8_add_char_array(command, (cchar_ptr) o_Compiler->value->bytes);
+        }else if(cake_strutf8_equals(format->list[i], "{linker}")) {
+            cake_list_strutf8_add_char_array(command, (cchar_ptr) o_Linker->value->bytes);
+        }else if(cake_strutf8_equals(format->list[i], "{compile_options}")) {
+            if(o_CompileOptions != NULL && o_CompileOptions->value->length > 0) {
+                uchar *lastPtr = o_CompileOptions->value->bytes;
+                uchar *ptr = lastPtr;
+                cake_bool loop = cake_true;
+                while(loop) {
+                    if(ptr == &o_CompileOptions->value->bytes[o_CompileOptions->value->data.length]) {
+                        loop = cake_false;
+                        goto options_space;
+                    }
+                    if(*ptr == ' ') {
+                        *ptr = '\0';
+                    options_space:
+                        cake_list_strutf8_add_char_array(command, (cchar_ptr) lastPtr);
+                        lastPtr = ptr + 1;
+                    }
+                    ptr++;
+                }
+            }
+        }else if(cake_strutf8_equals(format->list[i], "{link_options}")) {
+            if(o_LinkOptions != NULL && o_LinkOptions->value->length > 0) {
+                uchar *lastPtr = o_LinkOptions->value->bytes;
+                uchar *ptr = lastPtr;
+                cake_bool loop = cake_true;
+                while(loop) {
+                    if(ptr == &o_LinkOptions->value->bytes[o_LinkOptions->value->data.length]) {
+                        loop = cake_false;
+                        goto options_spacez;
+                    }
+                    if(*ptr == ' ') {
+                        *ptr = '\0';
+                    options_spacez:
+                        cake_list_strutf8_add_char_array(command, (cchar_ptr) lastPtr);
+                        lastPtr = ptr + 1;
+                    }
+                    ptr++;
+                }
+            }
+        }else if(cake_strutf8_equals(format->list[i], "{includes}")) {
+            if(o_Includes != NULL) {
+                for(j = 0; j < o_Includes->data.length; ++j) {
+                    #ifdef CAKE_UNIX
+                    cake_strutf8_remove_all(o_Includes->list[j], "\"");
+                    cake_strutf8_remove_all(o_Includes->list[j], "'");
+                    #endif
+                    cake_list_strutf8_add_char_array(command, (cchar_ptr) o_Includes->list[j]->bytes);
+                }
+            }
+        }else if(cake_strutf8_equals(format->list[i], "{libs}")) {
+            if(o_Libs != NULL) {
+                for(j = 0; j < o_Libs->data.length; ++j) {
+                    #ifdef CAKE_UNIX
+                    cake_strutf8_remove_all(o_Libs->list[j], "\"");
+                    cake_strutf8_remove_all(o_Libs->list[j], "'");
+                    #endif
+                    cake_list_strutf8_add_char_array(command, (cchar_ptr) o_Libs->list[j]->bytes);
+                }
+            }
+        }else if(cake_strutf8_equals(format->list[i], "{exec_name}")) {
+            cake_list_strutf8_add_char_array(command, (cchar_ptr) o_ExecName->value->bytes);
+        }else if(cake_strutf8_equals(format->list[i], "{link_libs}")) {
+            if(o_LinkLibs != NULL && o_LinkLibs->value->length > 0) {
+                uchar *lastPtr = o_LinkLibs->value->bytes;
+                uchar *ptr = lastPtr;
+                cake_bool loop = cake_true;
+                while(loop) {
+                    if(ptr == &o_LinkLibs->value->bytes[o_LinkLibs->value->data.length]) {
+                        loop = cake_false;
+                        goto options_spacex;
+                    }
+                    if(*ptr == ' ') {
+                        *ptr = '\0';
+                    options_spacex:
+                        cake_list_strutf8_add_char_array(command, (cchar_ptr) lastPtr);
+                        lastPtr = ptr + 1;
+                    }
+                    ptr++;
+                }
+            }
+        }else {
+            cake_list_strutf8_add_char_array(command, (cchar_ptr) format->list[i]->bytes);
+        }
+    }
+
+    cake_free_list_strutf8(format);
+    return command;
+}
+
+void command_index(Cake_UlonglongArray *dest, Cake_List_String_UTF8 *command, const char *value) {
+    dest->array = NULL;
+    dest->length = 0;
+    ulonglong j;
+    for(j = 0; j < command->data.length; ++j) {
+        if(cake_strutf8_equals(command->list[j], value)) {
+            void *ptr = realloc(dest->array, (dest->length + 1) * sizeof(*dest->array));
+            if(ptr != NULL) {
+                dest->array = (ulonglong *) ptr;
+                dest->array[dest->length] = j;
+                (dest->length)++;
+            }
+        }
+    }
+}
+
+void command_replace_index(Cake_List_String_UTF8 *command, Cake_UlonglongArray *indexArray, Cake_List_String_UTF8 *replacement, ulonglong replacementIndex) {
+    ulonglong j;
+    for(j = 0; j < indexArray->length; ++j) {
+        cake_strutf8_copy(command->list[indexArray->array[j]], replacement->list[replacementIndex]);
+        #ifdef CAKE_WINDOWS
+        cake_strutf8_insert_char_array(command->list[indexArray->array[j]], 0, "\"");
+        cake_strutf8_add_char_array(command->list[indexArray->array[j]], "\"");
+        #endif  
+    }
+}
+
+void command_replace_list(Cake_List_String_UTF8 *command, Cake_List_String_UTF8 *list, const char *value) {
+    ulonglong i, j;
+    for(i = 0; i < command->data.length;) {
+        if(cake_strutf8_equals(command->list[i], value)) {
+            cake_list_strutf8_remove(command, i);
+            for(j = 0; j < list->data.length; ++j) {
+                cake_list_strutf8_insert(command, i, (cchar_ptr) list->list[j]->bytes);
+                i++;
+            }
+        }else
+            i++;
+    }
 }

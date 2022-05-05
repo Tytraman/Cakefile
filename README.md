@@ -11,7 +11,7 @@ Dépendance : [**libcake**](https://github.com/Tytraman/libcake)<br>
 ## Documentation
 ### Utilisation
 Pour commencer, un fichier `Cakefile` doit être présent à la racine du projet.<br>
-Vous pouvez générer ce fichier avec les options par défaut en exécutant la commande `cake --generate`.
+Vous pouvez générer ce fichier avec les options par défaut en exécutant la commande `cake generate`.
 
 Liste des commandes :
 - `cake clean` : supprime les fichiers objets et le fichier de destination.

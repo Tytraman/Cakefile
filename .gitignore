@@ -1,9 +1,0 @@
-bin
-obj
-include/libcake
-Cakefile
-compile.cmd
-compile.sh
-.*
-*.exe
-cake
