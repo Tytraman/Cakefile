@@ -138,37 +138,6 @@ cake_bool get_fileobject_elements(Cake_FileObject *config) {
         LINUX_KEY
         #endif
     );
-    
-    cchar_ptr programmingLanguageKey = "programming_language";
-    o_ProgrammingLanguage = cake_fileobject_get_element_from(sysCont, programmingLanguageKey);
-    if(o_ProgrammingLanguage == NULL || o_ProgrammingLanguage->value->length == 0) {
-        cchar_ptr dLanguage = "c";
-        o_ProgrammingLanguage = cake_fileobject_get_element(config, programmingLanguageKey);
-        if(o_ProgrammingLanguage == NULL)
-            o_ProgrammingLanguage = cake_list_fileobject_element_add(&config->elements, programmingLanguageKey, dLanguage);
-        else if(o_ProgrammingLanguage->value->length == 0)
-            cake_char_array_to_strutf8(dLanguage, o_ProgrammingLanguage->value);
-        else
-            goto end_programming_language;
-        print_missing_option(programmingLanguageKey, (cchar_ptr) o_ProgrammingLanguage->value->bytes);
-    }
-end_programming_language:
-    if(
-        cake_strutf8_equals(o_ProgrammingLanguage->value, "c") ||
-        cake_strutf8_equals(o_ProgrammingLanguage->value, "C")
-    )
-        g_ModeLanguage = C_LANGUAGE;
-    else if(
-        cake_strutf8_equals(o_ProgrammingLanguage->value, "cpp") ||
-        cake_strutf8_equals(o_ProgrammingLanguage->value, "CPP") ||
-        cake_strutf8_equals(o_ProgrammingLanguage->value, "c++") ||
-        cake_strutf8_equals(o_ProgrammingLanguage->value, "C++")
-    )
-        g_ModeLanguage = CPP_LANGUAGE;
-    else {
-        fprintf(stderr, "Le langage de programmation `%s` n'est pas supporté.\n", o_ProgrammingLanguage->value->bytes);
-        return cake_false;
-    }
 
     cchar_ptr objDirKey = "obj_dir";
     o_ObjDir = cake_fileobject_get_element_from(sysCont, objDirKey);
@@ -326,6 +295,18 @@ end_auto_exec:
             return cake_false;
         }
     }
+
+    cchar_ptr srcExtensionsKey = "src_extensions";
+    cont = cake_fileobject_get_container_from(sysCont, srcExtensionsKey);
+    if(cont == NULL)
+        cont = cake_fileobject_get_container(config, srcExtensionsKey);
+    if(cont != NULL)
+        o_SrcExtensions = cont->strList;
+    else {
+        print_required_option(srcExtensionsKey);
+        return cake_false;
+    }
+
     return cake_true;
 }
 

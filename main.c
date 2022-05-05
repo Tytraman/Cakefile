@@ -89,28 +89,11 @@ int main(int argc, char *argv[])
 
     // Compilation des fichiers sources en objets
     if(g_Mode & MODE_COMPILE_ENABLED) {
-        Cake_List_String_UTF8 *srcExtensions = cake_list_strutf8();
-        
         Cake_List_String_UTF8 *compileCommand = command_format(o_CompileCommandFormat->value);
-        switch(g_ModeLanguage) {
-            case C_LANGUAGE:{
-                cake_list_strutf8_add_char_array(srcExtensions, ".c");
-                goto cpp_language;
-            }
-            case CPP_LANGUAGE:{
-                cake_list_strutf8_add_char_array(srcExtensions, ".cpp");
-                cake_list_strutf8_add_char_array(srcExtensions, ".c++");
-                cake_list_strutf8_add_char_array(srcExtensions, ".cxx");
-                cake_list_strutf8_add_char_array(srcExtensions, ".cc");
-            cpp_language:
-                cake_list_strutf8_add_char_array(srcExtensions, ".C");
-                break;
-            }
-        }
         Cake_List_String_UTF8 *srcFiles = cake_list_strutf8();
 
         // Récupération des fichiers sources du projet
-        cake_list_files_recursive(".", srcFiles, NULL, list_files_callback, srcExtensions);
+        cake_list_files_recursive(".", srcFiles, NULL, list_files_callback, o_SrcExtensions);
 
         // Listing des fichiers objets
         uchar j;
@@ -118,14 +101,13 @@ int main(int argc, char *argv[])
         for(i = 0; i < srcFiles->data.length; ++i) {
             cake_list_strutf8_add_char_array(oFiles, (cchar_ptr) srcFiles->list[i]->bytes);
             cake_strutf8_insert_char_array(oFiles->list[i], 0, (cchar_ptr) o_ObjDir->value->bytes);
-            for(j = 0; j < srcExtensions->data.length; ++j) {
-                if(cake_strutf8_replace_end(oFiles->list[i], (cchar_ptr) srcExtensions->list[j]->bytes, ".o"))
+            for(j = 0; j < o_SrcExtensions->data.length; ++j) {
+                if(cake_strutf8_replace_end(oFiles->list[i], (cchar_ptr) o_SrcExtensions->list[j]->bytes, ".o"))
                     goto skip_obj;
             }
             cake_strutf8_add_char_array(oFiles->list[i], ".o");
         skip_obj: ;
         }
-        cake_free_list_strutf8(srcExtensions);
 
         uchar temp;
         uchar *ptr;

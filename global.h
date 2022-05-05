@@ -30,19 +30,6 @@ extern cchar_ptr PROGRAM_NAME;
 // Nom du fichier de configuration (Cakefile).
 extern cchar_ptr OPTIONS_FILENAME;
 
-extern cchar_ptr STDERR;
-extern cchar_ptr STDOUT;
-extern cchar_ptr STDIN;
-
-/*
-        Langage de programmation à compiler.
-
-        Liste :
-        - C
-        - C++
-*/
-extern cake_byte g_ModeLanguage;
-
 extern cake_byte g_Mode;
 
 extern ulonglong g_NeedCompileNumber;
@@ -54,7 +41,6 @@ extern cake_bool g_Quiet;
 // Chemin actuel.
 extern Cake_String_UTF8 *g_CurrentDir;
 
-extern Cake_FileObjectElement *o_ProgrammingLanguage;
 extern Cake_FileObjectElement *o_ObjDir;
 extern Cake_FileObjectElement *o_BinDir;
 extern Cake_FileObjectElement *o_Compiler;
@@ -70,5 +56,7 @@ extern Cake_FileObjectElement *o_ExecArgs;
 
 extern Cake_FileObjectElement *o_CompileCommandFormat;
 extern Cake_FileObjectElement *o_LinkCommandFormat;
+
+extern Cake_List_String_UTF8 *o_SrcExtensions;
 
 #endif
