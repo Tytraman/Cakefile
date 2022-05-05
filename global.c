@@ -4,7 +4,7 @@ cchar_ptr VERSION          = "2.3.0";
 cchar_ptr PROGRAM_NAME     = "Cakefile";
 cchar_ptr OPTIONS_FILENAME = "Cakefile";
 
-cake_byte g_Mode = MODE_ALL;
+cake_byte g_Mode = 0;
 
 ulonglong g_NeedCompileNumber = 0;
 ulonglong g_CompileNumber = 0;

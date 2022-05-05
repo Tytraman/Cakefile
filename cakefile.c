@@ -29,9 +29,9 @@ cake_bool check_args(int argc, cake_char *argv[]) {
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("clean"))   == 0)
                 g_Mode = MODE_CLEAN_ENABLED;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("exec"))    == 0)
-                g_Mode = MODE_EXEC;
+                g_Mode |= MODE_STATS_ENABLED | MODE_EXEC_ENABLED;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("lines"))   == 0)
-                g_Mode = MODE_LINES_COUNT;
+                g_Mode |= MODE_LINES_COUNT_ENABLED;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("--quiet")) == 0)
                 g_Quiet = cake_true;
             else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("--help"))  == 0) {
@@ -50,7 +50,19 @@ cake_bool check_args(int argc, cake_char *argv[]) {
             }else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("--version")) == 0) {
                 if(version) {
                     version = cake_false;
-                    printf("%s x%s version %s\nCompilé le " __DATE__ " à " __TIME__ "\n", PROGRAM_NAME, (sizeof(void *) == 8 ? "64" : "86"), VERSION);
+                    cchar_ptr ver =
+                        "%s "
+                        #ifdef CAKE_X86_64
+                        "x%s "
+                        #else
+                        "%s bit "
+                        #endif
+                        "version %s\nCompilé le " __DATE__ " à " __TIME__ "\n";
+                    printf(ver,
+                        PROGRAM_NAME,
+                        (sizeof(void *) == 8 ? "64" : "86"),
+                        VERSION
+                    );
                     ret = cake_false;
                 }
             }else if(CAKE_CHAR_CMP(argv[i], CAKE_CHAR("generate")) == 0) {
@@ -104,6 +116,8 @@ cake_bool check_args(int argc, cake_char *argv[]) {
             }
         }
     }
+    if(g_Mode == 0)
+        g_Mode = MODE_ALL;
     return ret;
 }
 
@@ -177,7 +191,6 @@ end_obj_dir:
         print_missing_option(binDirKey, (cchar_ptr) o_BinDir->value->bytes);
     }
 end_bin_dir:
-    cake_strutf8_add_char_array(o_BinDir->value, FILE_SEPARATOR_CHAR_STR);     // bin/
 
     cchar_ptr compilerKey = "compiler";
     o_Compiler = cake_fileobject_get_element_from(sysCont, compilerKey);
@@ -248,26 +261,28 @@ end_exec_name:
     if(o_LinkLibs == NULL || o_LinkLibs->value->length == 0)
         o_LinkLibs = cake_fileobject_get_element(config, linkLibsKey);
 
-    cchar_ptr autoExecKey = "auto_exec";
-    o_AutoExec = cake_fileobject_get_element_from(sysCont, autoExecKey);
-    if(o_AutoExec == NULL || o_AutoExec->value->length == 0) {
-        cchar_ptr dAutoExec = "false";
-        o_AutoExec = cake_fileobject_get_element(config, autoExecKey);
-        if(o_AutoExec == NULL)
-            o_AutoExec = cake_list_fileobject_element_add(&config->elements, autoExecKey, dAutoExec);
-        else if(o_AutoExec->value->length == 0) {
-            cake_char_array_to_strutf8(dAutoExec, o_AutoExec->value);
-        }else {
-            if(
-                cake_strutf8_equals(o_AutoExec->value, "true") ||
-                cake_strutf8_equals(o_AutoExec->value, "y")    ||
-                cake_strutf8_equals(o_AutoExec->value, "yes")  ||
-                cake_strutf8_equals(o_AutoExec->value, "enabled")
-            )
-                g_Mode |= MODE_EXEC_ENABLED;
-            goto end_auto_exec;
+    if(g_Mode & MODE_LINK_ENABLED) {
+        cchar_ptr autoExecKey = "auto_exec";
+        o_AutoExec = cake_fileobject_get_element_from(sysCont, autoExecKey);
+        if(o_AutoExec == NULL || o_AutoExec->value->length == 0) {
+            cchar_ptr dAutoExec = "false";
+            o_AutoExec = cake_fileobject_get_element(config, autoExecKey);
+            if(o_AutoExec == NULL)
+                o_AutoExec = cake_list_fileobject_element_add(&config->elements, autoExecKey, dAutoExec);
+            else if(o_AutoExec->value->length == 0) {
+                cake_char_array_to_strutf8(dAutoExec, o_AutoExec->value);
+            }else {
+                if(
+                    cake_strutf8_equals(o_AutoExec->value, "true") ||
+                    cake_strutf8_equals(o_AutoExec->value, "y")    ||
+                    cake_strutf8_equals(o_AutoExec->value, "yes")  ||
+                    cake_strutf8_equals(o_AutoExec->value, "enabled")
+                )
+                    g_Mode |= MODE_EXEC_ENABLED;
+                goto end_auto_exec;
+            }
+            print_missing_option(autoExecKey, (cchar_ptr) o_AutoExec->value->bytes);
         }
-        print_missing_option(autoExecKey, (cchar_ptr) o_AutoExec->value->bytes);
     }
 end_auto_exec:
 
@@ -377,16 +392,18 @@ cake_bool check_includes(cake_fd srcFd, cake_fd oFd, Cake_String_UTF8 *srcFile) 
 }
 
 Cake_List_String_UTF8 *command_format(Cake_String_UTF8 *from) {
+    cake_strutf8_replace_all(from, "{obj_dir}", (cchar_ptr) o_ObjDir->value->bytes);
+    cake_strutf8_replace_all(from, "{bin_dir}", (cchar_ptr) o_BinDir->value->bytes);
+    cake_strutf8_replace_all(from, "{exec_name}", (cchar_ptr) o_ExecName->value->bytes);
+    cake_strutf8_replace_all(from, "{compiler}", (cchar_ptr) o_Compiler->value->bytes);
+    cake_strutf8_replace_all(from, "{linker}", (cchar_ptr) o_Linker->value->bytes);
+
     Cake_List_String_UTF8 *format = cake_strutf8_split(from, " ");
     Cake_List_String_UTF8 *command = cake_list_strutf8();
 
     ulonglong i, j;
     for(i = 0; i < format->data.length; ++i) {
-        if(cake_strutf8_equals(format->list[i], "{compiler}")) {
-            cake_list_strutf8_add_char_array(command, (cchar_ptr) o_Compiler->value->bytes);
-        }else if(cake_strutf8_equals(format->list[i], "{linker}")) {
-            cake_list_strutf8_add_char_array(command, (cchar_ptr) o_Linker->value->bytes);
-        }else if(cake_strutf8_equals(format->list[i], "{compile_options}")) {
+        if(cake_strutf8_equals(format->list[i], "{compile_options}")) {
             if(o_CompileOptions != NULL && o_CompileOptions->value->length > 0) {
                 uchar *lastPtr = o_CompileOptions->value->bytes;
                 uchar *ptr = lastPtr;
@@ -444,8 +461,6 @@ Cake_List_String_UTF8 *command_format(Cake_String_UTF8 *from) {
                     cake_list_strutf8_add_char_array(command, (cchar_ptr) o_Libs->list[j]->bytes);
                 }
             }
-        }else if(cake_strutf8_equals(format->list[i], "{exec_name}")) {
-            cake_list_strutf8_add_char_array(command, (cchar_ptr) o_ExecName->value->bytes);
         }else if(cake_strutf8_equals(format->list[i], "{link_libs}")) {
             if(o_LinkLibs != NULL && o_LinkLibs->value->length > 0) {
                 uchar *lastPtr = o_LinkLibs->value->bytes;
@@ -459,6 +474,25 @@ Cake_List_String_UTF8 *command_format(Cake_String_UTF8 *from) {
                     if(*ptr == ' ') {
                         *ptr = '\0';
                     options_spacex:
+                        cake_list_strutf8_add_char_array(command, (cchar_ptr) lastPtr);
+                        lastPtr = ptr + 1;
+                    }
+                    ptr++;
+                }
+            }
+        }else if(cake_strutf8_equals(format->list[i], "{exec_args}")) {
+            if(o_ExecArgs != NULL && o_ExecArgs->value->length > 0) {
+                uchar *lastPtr = o_ExecArgs->value->bytes;
+                uchar *ptr = lastPtr;
+                cake_bool loop = cake_true;
+                while(loop) {
+                    if(ptr == &o_ExecArgs->value->bytes[o_ExecArgs->value->data.length]) {
+                        loop = cake_false;
+                        goto execArgs;
+                    }
+                    if(*ptr == ' ') {
+                        *ptr = '\0';
+                    execArgs:
                         cake_list_strutf8_add_char_array(command, (cchar_ptr) lastPtr);
                         lastPtr = ptr + 1;
                     }

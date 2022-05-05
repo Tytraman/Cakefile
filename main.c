@@ -43,8 +43,6 @@ int main(int argc, char *argv[])
         return 1;
     }
     
-    
-    
     if(g_Mode & MODE_CLEAN_ENABLED) {
         if(!g_Quiet)
             printf("[===== Nettoyage =====]\n");
@@ -85,21 +83,30 @@ int main(int argc, char *argv[])
     ulonglong linkTimeStart = 0, linkTimeEnd = 0;
     ulonglong i;
 
+    Cake_List_String_UTF8 *srcFiles = NULL;
     Cake_List_String_UTF8 *oFiles = NULL;
 
     // Compilation des fichiers sources en objets
     if(g_Mode & MODE_COMPILE_ENABLED) {
         Cake_List_String_UTF8 *compileCommand = command_format(o_CompileCommandFormat->value);
-        Cake_List_String_UTF8 *srcFiles = cake_list_strutf8();
+        srcFiles = cake_list_strutf8();
 
         // Récupération des fichiers sources du projet
         cake_list_files_recursive(".", srcFiles, NULL, list_files_callback, o_SrcExtensions);
 
         // Listing des fichiers objets
-        uchar j;
+        ulonglong j;
         oFiles = cake_list_strutf8();
         for(i = 0; i < srcFiles->data.length; ++i) {
             cake_list_strutf8_add_char_array(oFiles, (cchar_ptr) srcFiles->list[i]->bytes);
+            j = 0;
+            while(
+                oFiles->list[i]->bytes[j] == '.' ||
+                oFiles->list[i]->bytes[j] == FILE_SEPARATOR_CHAR ||
+                oFiles->list[i]->bytes[j] == FILE_SEPARATOR_REVERSE_CHAR
+            )
+                j++;
+            cake_strutf8_remove_from_to_internal(oFiles->list[i], 0, j);
             cake_strutf8_insert_char_array(oFiles->list[i], 0, (cchar_ptr) o_ObjDir->value->bytes);
             for(j = 0; j < o_SrcExtensions->data.length; ++j) {
                 if(cake_strutf8_replace_end(oFiles->list[i], (cchar_ptr) o_SrcExtensions->list[j]->bytes, ".o"))
@@ -206,7 +213,8 @@ int main(int argc, char *argv[])
         
         cake_free_list_strutf8(compileCommand);
 
-        cake_free_list_strutf8(srcFiles);
+        if((g_Mode & MODE_LINES_COUNT_ENABLED) == 0)
+            cake_free_list_strutf8(srcFiles);
         if((g_Mode & MODE_LINK_ENABLED) == 0)
             cake_free_list_strutf8(oFiles);
     }
@@ -220,82 +228,35 @@ int main(int argc, char *argv[])
             cake_list_files_recursive((cchar_ptr) o_ObjDir->value->bytes, oFiles, NULL, list_o_files_callback, NULL);
             goto go_link;
         }
-
-        // ./cake
-        // ./cake all
-        // ./cake reset
-        if(
-            (
-                ((g_Mode & MODE_COMPILE_ENABLED) != 0) &&
-                (
-                    (g_NeedCompileNumber == 0)                ||
-                    (g_CompileNumber != g_NeedCompileNumber)
-                )
-            )
-        )
+        if(g_NeedCompileNumber == 0 || g_CompileNumber != g_NeedCompileNumber)
             goto skip_link;
 
     go_link:
         cake_mkdirs((cchar_ptr) o_BinDir->value->bytes);
-
-        /*
-        Cake_String_UTF8 *filenameLink = cake_strutf8(".cakefile_temp_link_");
-        char linkDigit[6];
-        uint digit;
-        while(1) {
-            digit = (uint) (rand() % 100000);
-            cake_ulonglong_to_char_array(digit, linkDigit);
-            cake_strutf8_add_char_array(filenameLink, linkDigit);
-            if(!cake_file_exists((cchar_ptr) filenameLink->bytes))
-                break;
-            cake_strutf8_remove_from_to_internal(filenameLink, filenameLink->data.length - 5, filenameLink->data.length);
+        Cake_List_String_UTF8 *linkCommand = command_format(o_LinkCommandFormat->value);
+        command_replace_list(linkCommand, oFiles, "{list_obj_files}");
+        
+        if(!g_Quiet) {
+            printf("[===== Link =====]\n");
+            ulonglong y;
+            for(y = 0; y < linkCommand->data.length; ++y)
+                printf("%s ", linkCommand->list[y]->bytes);
+            printf("\n");
         }
-
-        cake_fd linkFd = cake_fdio_open_file((cchar_ptr) filenameLink->bytes, CAKE_FDIO_ACCESS_WRITE, 0, CAKE_FDIO_OPEN_CREATE_ALWAYS, CAKE_FDIO_ATTRIBUTE_HIDDEN);
-        if(linkFd == CAKE_FDIO_ERROR_OPEN) {
-            fprintf(stderr, "Impossible de créer le fichier temporaire pour lier les fichiers objets.\n");
-        }else {
-            */
-            Cake_List_String_UTF8 *linkCommand = command_format(o_LinkCommandFormat->value);
-            command_replace_list(linkCommand, oFiles, "{list_obj_files}");
-            //cake_list_strutf8_add_char_array(linkCommand, "@");
-            //cake_strutf8_add_char_array(linkCommand->list[linkCommand->data.length - 1], (cchar_ptr) filenameLink->bytes);
-            /*
-            for(i = 0; i < oFiles->data.length; ++i) {
-                #ifdef CAKE_WINDOWS
-                cake_strutf8_replace_all(oFiles->list[i], FILE_SEPARATOR_CHAR_STR, FILE_SEPARATOR_REVERSE_CHAR_STR);
-                #endif
-                cake_fdio_write_no_ret(linkFd, oFiles->list[i]->data.length, oFiles->list[i]->bytes);
-                cake_fdio_write_no_ret(linkFd, sizeof(space), &space);
-            }
-            cake_fdio_close(linkFd);
-            */
-            
-            if(!g_Quiet) {
-                printf("[===== Link =====]\n");
-                ulonglong y;
-                for(y = 0; y < linkCommand->data.length; ++y)
-                    printf("%s ", linkCommand->list[y]->bytes);
-                printf("\n");
-            }
-            Cake_Process process;
-            if(!cake_create_process(linkCommand, &process, NULL, NULL, NULL))
-                fprintf(stderr, "Une erreur est survenue à la création du processus...\n");
-            else {
-                linkTimeStart = cake_get_current_time_millis();
-                cake_process_start(process);
-                cake_exit_code retCode;
-                cake_process_wait(process, retCode);
-                linkTimeEnd = cake_get_current_time_millis();
-                linkOk = (retCode == 0);
-            }
-            
-            //cake_delete_file((cchar_ptr) filenameLink->bytes);
-            cake_free_list_strutf8(linkCommand);
+        Cake_Process process;
+        if(!cake_create_process(linkCommand, &process, NULL, NULL, NULL))
+            fprintf(stderr, "Une erreur est survenue à la création du processus...\n");
+        else {
+            linkTimeStart = cake_get_current_time_millis();
+            cake_process_start(process);
+            cake_exit_code retCode;
+            cake_process_wait(process, retCode);
+            linkTimeEnd = cake_get_current_time_millis();
+            linkOk = (retCode == 0);
         }
+        cake_free_list_strutf8(linkCommand);
         cake_free_list_strutf8(oFiles);
-        //cake_free_strutf8(filenameLink);
-    //}
+    }
 skip_link:
 
     cake_exit_code retCode;
@@ -305,6 +266,8 @@ skip_link:
         Cake_List_String_UTF8 *execCommand = cake_list_strutf8();
         cake_list_strutf8_add_char_array(execCommand, (cchar_ptr) o_BinDir->value->bytes);
         cake_strutf8_insert_char_array(execCommand->list[0], 0, "." FILE_SEPARATOR_CHAR_STR);
+        if(execCommand->list[0]->bytes[execCommand->list[0]->data.length - 1] != FILE_SEPARATOR_CHAR)
+            cake_strutf8_add_char_array(execCommand->list[0], FILE_SEPARATOR_CHAR_STR);
         cake_strutf8_add_char_array(execCommand->list[0], (cchar_ptr) o_ExecName->value->bytes);
         if(o_ExecArgs != NULL && o_ExecArgs->value->length > 0) {
             uchar *lastPtr = o_ExecArgs->value->bytes;
@@ -405,6 +368,39 @@ skip_link:
         }
         printf((const char *) coolStat->bytes);
         cake_free_strutf8(coolStat);
+    }
+
+    if(g_Mode & MODE_LINES_COUNT_ENABLED) {
+        if(srcFiles == NULL) {
+            srcFiles = cake_list_strutf8();
+            cake_list_files_recursive(".", srcFiles, NULL, list_files_callback, o_SrcExtensions);
+        }
+            
+        ulonglong totalLines = 0;
+        ulonglong currentLines;
+        cake_fd fd;
+        char c;
+        if(!g_Quiet)
+            printf("[===== Lignes =====]\n");
+        for(i = 0; i < srcFiles->data.length; ++i) {
+            currentLines = 0;
+            fd = cake_fdio_open_file((cchar_ptr) srcFiles->list[i]->bytes, CAKE_FDIO_ACCESS_READ, CAKE_FDIO_SHARE_READ, CAKE_FDIO_OPEN_IF_EXISTS, CAKE_FDIO_ATTRIBUTE_NORMAL);
+            if(fd != CAKE_FDIO_ERROR_OPEN) {
+                #ifdef CAKE_UNIX
+                while(read(fd, &c, sizeof(char))) {
+                    if(c == '\n')
+                        currentLines++;
+                }
+                #else
+                // TODO: version Windows
+                #endif
+                cake_fdio_close(fd);
+                totalLines += currentLines;
+                printf("%s => %llu\n", (cchar_ptr) srcFiles->list[i]->bytes, currentLines);
+            }
+        }
+        printf("Total: " CONSOLE_BOLD CONSOLE_FG_YELLOW "%llu" CONSOLE_RESET "\n", totalLines);
+        cake_free_list_strutf8(srcFiles);
     }
     
 end:

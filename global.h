@@ -17,8 +17,6 @@
 #define MODE_ALL                 0b11100000
 #define MODE_LINK                0b10100000
 #define MODE_REBUILD             0b11101000
-#define MODE_EXEC                0b10000100
-#define MODE_LINES_COUNT         0b00000010
 
 #define C_LANGUAGE   1
 #define CPP_LANGUAGE 2
