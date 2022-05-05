@@ -33,18 +33,21 @@ Les options utilisées par le programme sont chargées depuis le fichier `Cakefi
 
 Liste des options :
 
-- `programming_language` : langage de programmation utilisé, pour plus d'informations voir [**les langages supportés**](#programming_languages).
 - `bin_dir` : dossier dans lequel sera stocké le fichier final.
-- `obj_dir` : dossier dans lequel seront stockés les fichiers objets.
+- `obj_dir` : dossier dans lequel seront stockés les fichiers objets.<br><br>
 - `compiler` : compilateur utilisé.
-- `exec_name` : nom du fichier destination.
+- `linker` : linker utilisé.<br><br>
+- `exec_name` : nom du fichier destination.<br><br>
 - `compile_options` : options à passer lors de la compilation.
 - `link_options` : options à passer lors du link.
 - `includes` : liste des dossiers à inclure lors de la compilation.
 - `libs` : liste des dossiers contenant les librairies à inclure lors de la compilation.
-- `link_libs` : librairies à ajouter lors du link, exemple : `-lcake -lWs2_32 -lssl -lcrypto`.
+- `link_libs` : librairies à ajouter lors du link, exemple : `-lcake -lWs2_32 -lssl -lcrypto`.<br><br>
 - `auto_exec` : définie si l'exécutable final doit être automatiquement exécuté.
-- `exec_args` : arguments à passer lorsque la commande `cake exec` est entrée ou que `auto_exec` est activée.
+- `exec_args` : arguments à passer lorsque la commande `cake exec` est entrée ou que `auto_exec` est activée.<br><br>
+- `compile_command_format` : format de la commande de compilation.
+- `link_command_format` : format de la commande de link.<br><br>
+- `src_extensions` : liste des extensions des fichiers sources.<br><br>
 
 Si vous développez sur plusieurs plateformes, vous pouvez utiliser des options différentes pour chacun des systèmes, actuellement les 2 seuls disponibles sont `linux` et `windows`.<br>
 Voici un exemple d'un fichier `Cakefile` :
@@ -55,17 +58,27 @@ programming_language : c
 auto_exec : false
 exec_name : prog
 
+compile_command_format : {compiler} -c {src_file} -o {obj_file} {includes} {compile_options}
+link_command_format : {linker} {list_obj_files} -o {exec_name} {link_libs} {link_options}
+
+src_extensions {
+    - .c
+    - .C
+    - .cpp
+    - .cc
+}
+
 linux {
     compiler : gcc
     exec_name : linux_prog
     link_libs : -ltest1 -ltest2
     includes {
-        - /home/me/mylib/include
-        - /media/USB/include
+        - -I/home/me/mylib/include
+        - -I/media/USB/include
     }
     libs {
-        - /home/me/mylib/lib
-        - /media/USB/lib
+        - -L/home/me/mylib/lib
+        - -L/media/USB/lib
     }
 }
 
@@ -77,8 +90,3 @@ windows {
 
 ```
 Les paramètres spécifiés dans `linux` et `windows` viennent écraser ceux qui sont globaux. Dans l'exemple ci-dessus, `exec_name` est défini de manière globale avec la valeur *prog*, mais vu que l'option est redéfinie dans `linux` et `windows`, cette valeur ne sera prise en compte par aucun des systèmes.
-
-## <a name="programming_languages"></a> Langages de programmation
-Cakefile ne fonctionne que sur des langages prédéfinis, dont voici la liste :
-- [**Langage C**](https://fr.wikipedia.org/wiki/C_(langage))
-- [**C++**](https://fr.wikipedia.org/wiki/C%2B%2B)
